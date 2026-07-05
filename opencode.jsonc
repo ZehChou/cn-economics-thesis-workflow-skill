@@ -1,0 +1,35 @@
+{
+  "$schema": "https://opencode.ai/schemas/opencode.json",
+  /**
+   * cn-economics-thesis-workflow-skill 示例配置
+   *
+   * 将此文件的内容合并到你项目根目录的 opencode.jsonc 中，
+   * 或在项目根目录创建 opencode.jsonc 并引用此文件。
+   */
+  "skills": [
+    /**
+     * 方式一：直接从 GitHub 引用（仅 OpenCode 支持）
+     * 会将此仓库自动拉取到 ~/.config/opencode/skills/ 下
+     */
+    "github:ZehChou/cn-economics-thesis-workflow-skill",
+
+    /**
+     * 方式二：通过本地路径引用（所有客户端通用）
+     * 前提是你已经 clone 到本地
+     */
+    // "file:~/.config/opencode/skills/cn-economics-thesis-workflow-skill/SKILL.md"
+  ],
+
+  /**
+   * Stata MCP 配置
+   * 安装方法：uvx stata-mcp install -c <client-name>
+   * 支持 opencode / claude / codex 等客户端
+   * 安装后会自动注册以下 MCP 配置，无需手动填写
+   */
+  "mcpServers": {
+    "stata-mcp": {
+      "command": "uvx",
+      "args": ["stata-mcp"]
+    }
+  }
+}
