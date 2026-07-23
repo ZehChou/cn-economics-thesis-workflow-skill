@@ -16,20 +16,45 @@ AI 回顾 Phase 2 推导的研究假设：
 
 ### Step 7.2：方法推荐
 
+#### 推荐方法（按优先级排序）
+
 ```
 推荐机制检验方案
 ═══════════════════════════════════════
 
-1. 中介效应（H2a / H2b）
-   方法 A：Baron & Kenny 三步法 + Sobel 检验
-   方法 B：Bootstrap 中介检验（推荐，500/1000 次）
-   方法 C：江艇（2022）两步法（适合面板数据）
+1. 【推荐】江艇 (2022) 两步法（适合面板数据，经济学主流）
+   • 第一步：检验 X → M（X 对中介变量的影响）
+   • 第二步：引用已有文献或理论论证 M → Y（而非在本文中同时回归 X 和 M）
+   • 优势：避免"中介变量也是内生变量"的经典问题（X 和 M 高度相关导致估计偏误）
+   • 适用：面板固定效应模型
 
-2. 调节效应（H3）
+2. 【推荐】因果中介分析（Imai et al. 2010, 2011）
+   • 基于潜在结果框架，不依赖线性模型假设
+   • 可分解为：直接效应 (ADE) + 间接效应 (ACME)
+   • 通过 Bootstrap 进行置信区间推断
+   • 适用：处理效应存在异质性时
+
+3. 【可选】Baron & Kenny (1986) 三步法 + Sobel 检验
+   • 第一步：X → Y（总效应显著）
+   • 第二步：X → M（路径 a 显著）
+   • 第三步：X + M → Y（路径 b 显著，X 系数下降）
+   • 第四步：Sobel 检验间接效应
+   • ⚠️ 注意：三步法要求第一步 X→Y 必须显著，但现代中介分析允许
+     "遮掩效应"（suppression effect），即 X→Y 不显著但间接效应存在。
+   • 适用：仅做 OLS 回归的简单中介检验
+
+4. 调节效应（H3）
    Y = α + β1*X + β2*Z + β3*X×Z + γ*Controls + ε
    关注 β3 的符号和显著性
+```
 
+#### 方法选择建议
+
+```
 建议：{根据数据结构和假设类型推荐最佳方法}
+  - 面板数据 + 固定效应 → 优先推荐江艇 (2022) 两步法
+  - 截面数据 + 连续中介变量 → 推荐因果中介分析 (Imai)
+  - 简单中介 + 稳健性需求 → 推荐 Bootstrap 中介检验
 ```
 
 ### Step 7.3：机制变量状态检查
@@ -44,7 +69,29 @@ AI 回顾 Phase 2 推导的研究假设：
   • {变量名}：{构造方法和计算说明}
 ```
 
-### Step 7.4：写 do file
+### Step 7.4：替代机制排除策略
+
+除主检验方法外，AI 应建议用户考虑替代机制排除：
+
+```
+替代机制排除策略
+═══════════════════════════════════════
+
+1. 排除其他竞争性机制
+   • 可能的替代解释：{竞争者 A}
+   • 检验方法：在回归中加入竞争性机制的代理变量，看 X 系数是否变化
+   • 预期：加入后 X 系数变化不大
+
+2. 排除"遗漏变量—机制混杂"问题
+   • 如果某个遗漏变量同时影响 X 和 M，会误判为中介效应
+   • 检验方法：Oster (2019) 检验应用于 X→M 回归
+
+3. 排他性论证
+   • 论证 M 是 X 影响 Y 的唯一/主要渠道
+   • 需排除其他渠道存在的可能性
+```
+
+### Step 7.5：写 do file
 
 ```stata
 * do/mechanism.do
@@ -56,13 +103,17 @@ use "cleaned/dataset.dta", clear
 * ── 主效应（Phase 5 验证通过）──
 * ...
 
-* ── 中介效应：X → M ──
+* ── 方法一：江艇两步法 ──
+* 第一步：X → M
 * reg M X $controls i.id i.year, vce(cluster id)
 
-* ── 中介效应：X + M → Y ──
-* reg Y X M $controls i.id i.year, vce(cluster id)
+* 第二步：引用文献论证 M → Y
+* （无需在本文回归中包含 M）
 
-* ── Sobel 检验（如适用）──
+* ── 方法二：Baron & Kenny 三步法（可选）──
+* Step 1: reg Y X $controls i.id i.year, vce(cluster id)
+* Step 2: reg M X $controls i.id i.year, vce(cluster id)
+* Step 3: reg Y X M $controls i.id i.year, vce(cluster id)
 * sgmediation Y, mv(M) iv(X) cv($controls)
 
 * ── 调节效应 ──
@@ -72,7 +123,7 @@ use "cleaned/dataset.dta", clear
 * esttab ... using "output/tables/mechanism.rtf", replace
 ```
 
-### Step 7.5：结果解读
+### Step 7.6：结果解读
 
 ```
 机制检验结果
@@ -80,9 +131,13 @@ use "cleaned/dataset.dta", clear
 
 中介效应检验：
   • X → M：系数 = {value}，{p-value} → {显著/不显著}
-  • X + M → Y：X 系数下降至 {value}，{仍显著/不显著}
-  • Sobel Z = {value}，p = {p-value}
+  • 中介变量 M 的排他性论证：{论证依据}
   • 结论：{中介效应成立/不成立}
+
+替代机制排除：
+  • 竞争性解释 A：{检验结果}
+  • 竞争性解释 B：{检验结果}
+  • 综合判断：{X 通过 M 影响 Y 是/否是唯一渠道}
 
 调节效应检验：
   • X×Z 交互项系数 = {value}，{p-value}
@@ -96,4 +151,4 @@ use "cleaned/dataset.dta", clear
 
 Phase 7 完成后，更新 `.thesis_state.json`：
 - `current_phase`: 7 → 8
-- `mechanism_results`: 记录机制检验结果
+- `mechanism_results`: 记录机制检验结果和替代机制排除结果

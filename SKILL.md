@@ -105,3 +105,6 @@ Phase 4-8 共享以下交互循环，各 Phase 仅需指定**方法列表**、**
 | B | [appendices/B-docx-helper.md](appendices/B-docx-helper.md) | docx 辅助函数接口定义 |
 | C | [appendices/C-stata-mcp.md](appendices/C-stata-mcp.md) | Stata MCP 配置与使用指南 |
 | D | [appendices/D-general-rules.md](appendices/D-general-rules.md) | 通用规则、变量传递、错误处理、时间估计 |
+| E | [appendices/E-reviewer-qa.md](appendices/E-reviewer-qa.md) | 审稿人/答辩常见问题应对策略 |
+| F | [appendices/F-stata-archive.md](appendices/F-stata-archive.md) | Stata do file 归档规范 |
+| G | [appendices/G-reference-management.md](appendices/G-reference-management.md) | 参考文献管理建议 |
