@@ -1,0 +1,291 @@
+## Phase 9：论文撰写与排版成文
+
+### Step 9.0：路线选择
+
+进入 Phase 9 时，AI 首先询问排版路线：
+
+```
+论文文档生成路线选择
+═══════════════════════════════════════
+
+请选择文档生成方式：
+
+A. Python 路线（python-docx）
+   依赖：Python 3.9+，pip install python-docx
+   特点：纯 Python 生态，与数据分析流水线同语言，易于维护
+   公式支持：通过 latex2mathml 或 python-docx 原生公式
+
+B. Node.js 路线（docx-skill-4-cn-paper）
+   依赖：Node.js 18+，npm install docx temml fast-xml-parser
+   特点：原生公式支持（temml → MathML → Word 原生公式），
+         直接使用 docx-skill-4-cn-paper 辅助函数体系
+   公式管道：LaTeX → temml → MathML → OMML（Word 原生）
+
+建议：如果你熟悉 Node.js 或需要高质量公式渲染，选 B。
+      如果希望保持全流程 Python 统一，选 A。
+
+你的选择：[A / B]
+```
+
+### Step 9.1：素材读取
+
+AI 从以下来源读取素材：
+
+| 来源 | 内容 | 读取方式 |
+|------|------|----------|
+| Phase 1-8 产出 | 回归结果表、统计描述表、图表 | `output/tables/` + `output/figures/` |
+| 文献知识库 | 文献引用语句、综述草稿 | 上下文变量或 `.thesis_state.json` |
+| 参考范文 .docx（如有） | 样式定义、格式模板 | `python-docx` 读取样式 |
+| 用户补充 | 特定需要写进论文的内容 | 用户提供 |
+
+### Step 9.2：范文格式提取
+
+若用户提供了参考范文，AI 提取其格式参数：
+
+```python
+# AI 使用 python-docx 读取范文样式
+from docx import Document
+doc = Document("thesis/reference.docx")
+
+# 提取默认样式参数
+default_style = doc.styles['Normal']
+heading1_style = doc.styles['Heading 1']
+# ... 提取字体、字号、行距、颜色、段落间距等
+
+# 提取页面设置
+section = doc.sections[0]
+page_width = section.page_width
+page_height = section.page_height
+margin_left = section.left_margin
+# ...
+```
+
+输出格式参数供后续使用。若未提供范文，使用 easy-paper 格式规范（见附录 A）。
+
+### Step 9.3：大纲先行
+
+AI 先生成全文大纲：
+
+```
+论文大纲（用户确认后撰写正文）
+═══════════════════════════════════════
+
+第一章 引言
+  1.1 研究背景（约 1 页）
+  1.2 研究问题与意义（约 0.5 页）
+  1.3 研究方法（约 0.5 页）
+  1.4 主要发现与贡献（约 0.5 页）
+  1.5 论文结构安排（约 0.25 页）
+
+第二章 文献综述
+  2.1 {主题1} 相关研究（约 1.5 页）
+  2.2 {主题2} 相关研究（约 1.5 页）
+  2.3 {理论机制} 相关研究（约 1 页）
+  2.4 研究述评与本文定位（约 0.5 页）
+
+第三章 理论机制与研究假设
+  3.1 理论分析框架（约 1 页）
+  3.2 机制分析与研究假设（约 1 页）
+
+第四章 研究设计
+  4.1 数据来源与处理（约 1 页）
+  4.2 变量定义与描述统计（约 1.5 页）
+  4.3 计量模型设定（约 1 页）
+
+第五章 实证结果分析
+  5.1 基准回归（约 1.5 页）
+  5.2 内生性处理（约 2 页）
+  5.3 稳健性检验（约 1.5 页）
+  5.4 机制检验（约 1.5 页）
+  5.5 异质性分析（约 1.5 页）
+
+第六章 结论与政策建议
+  6.1 主要结论（约 1 页）
+  6.2 政策建议（约 1 页）
+  6.3 研究局限与未来展望（约 0.5 页）
+
+（约 15-20 页正文 + 附录）
+```
+
+用户确认大纲后进入正文撰写。
+
+### Step 9.4：正文撰写（占位符策略）
+
+正文撰写采用 **`[CIT:关键词]` 占位符**策略：
+
+- 所有引用位置写作：`研究指出，X 对 Y 有显著正向影响[CIT:Author2020_keyfinding]`
+- 占位符格式：`[CIT:关键词1;关键词2]`（用于需要合并多篇文献的表述）
+- 不插入具体引文格式，避免后续替换时污染格式
+- 每章分步骤撰写，完成后用户可以分段确认
+
+撰写顺序：
+1. 实证结果章节（第五章）— 最确定，最先写
+2. 研究设计章节（第四章）
+3. 理论机制章节（第三章）— 结合 Phase 2
+4. 文献综述章节（第二章）
+5. 引言章节（第一章）— 最后写，统领全文
+6. 结论章节（第六章）
+7. 中英文摘要 — 最后浓缩
+
+### Step 9.5：补充推荐文献
+
+正文初稿完成后，AI 基于 `[CIT:]` 占位符的使用情况，识别是否需要补充文献：
+
+```
+补充文献建议
+─────────────────────────────────
+
+以下位置占位符较多，建议补充阅读：
+  • 第 2.1 节 — {主题} — 现有 {n} 条，建议补充至 {m} 条
+  • 第 5.3 节 — {主题} — 需要对比文献
+
+推荐补充搜索关键词：
+  • {关键词组合 1}
+  • {关键词组合 2}
+
+用户将补充文献 PDF 放入 references/ 目录。
+─────────────────────────────────
+```
+
+### Step 9.6：引文标注（占位符替换）
+
+用户补充文献后，AI 重新精读所有引用到的 PDF，提取准确引用信息：
+
+```
+引用信息标注（每条占位符替换）
+─────────────────────────────────
+[CIT:Author2020_keyfinding]
+  → (王某某等, 2020) 或
+  → (Smith et al., 2020) 或
+  → 多篇合并时：研究指出...（王某某等, 2020; Smith et al., 2020）
+─────────────────────────────────
+```
+
+批量替换所有 `[CIT:...]` 占位符为 `(Author, Year)` 格式。同时生成参考文献列表（GB/T 7714 格式）。
+
+### Step 9.7：图表推荐与插入
+
+AI 检查论文中需要图表的位置，询问用户：
+
+```
+论文图表插入建议
+═══════════════════════════════════════
+
+第 4 章（研究设计）：
+  □ 表 1：描述性统计表 ✓（已存在 output/tables/desc.rtf）
+  □ 表 2：相关性矩阵 ✓（已存在）
+  □ 图 1：核心变量分布图 ✓（已存在 output/figures/dist.png）
+
+第 5 章（实证结果）：
+  □ 表 3：基准回归结果 ✓（已存在 output/tables/baseline.rtf）
+  □ 表 4：内生性处理结果 ✓（已存在 output/tables/endogeneity.rtf）
+  □ 表 5：稳健性检验结果 ✓（已存在）
+  □ 表 6：机制检验结果 ✓（已存在）
+  □ 表 7：异质性分析结果（分维度）✓（已存在）
+  □ 图 2：机制路径图（需新建）
+
+请确认以上图表是否需要全部插入？
+如需调整或新增，请说明。
+═══════════════════════════════════════
+```
+
+用户确认后，AI 通过 python-docx（A 路线）或 docx npm（B 路线）将图表插入对应章节位置。
+
+图表排版格式（三线表标准）：
+- 表题在上：小五号黑体，居中
+- 表格为三线表（顶线 1.5pt / 栏目线 0.75pt / 底线 1.5pt）
+- 表注在下：小五号宋体
+- 图题在下：小五号黑体，居中
+
+### Step 9.8：最终排版
+
+AI 执行最终排版流程：
+
+```
+最终排版清单
+═══════════════════════════════════════
+
+□ 封面——按范文/学校模板生成
+□ 中文摘要——300-500 字 + 3-5 个关键词
+□ 英文摘要——对应翻译
+□ 目录——生成目录占位符（用户在 Word 中更新域）
+□ 正文——全部章节
+□ 参考文献列表——GB/T 7714 格式
+□ 附录——如有
+□ 致谢——可选
+
+排版完成后通知用户。
+```
+
+### 输出
+
+论文最终输出为 `thesis/论文题目_终稿.docx`。
+
+### A 路线（Python python-docx）示例
+
+```python
+from docx import Document
+from docx.shared import Pt, Cm, Inches
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+doc = Document()
+
+# 页面设置
+section = doc.sections[0]
+section.page_width = Cm(21)
+section.page_height = Cm(29.7)
+section.left_margin = Cm(3)
+section.right_margin = Cm(2.5)
+section.top_margin = Cm(2.5)
+section.bottom_margin = Cm(2.5)
+
+# 一级标题
+h1 = doc.add_heading("第一章 引言", level=1)
+h1_run = h1.runs[0]
+h1_run.font.name = '黑体'
+h1_run.font.size = Pt(14)
+
+# 正文段落
+p = doc.add_paragraph()
+p.style = doc.styles['Normal']
+p_run = p.runs[0]
+p_run.font.name = '宋体'
+p_run.font.size = Pt(12)
+p.paragraph_format.line_spacing = 1.5
+
+# 插入图片
+doc.add_picture("output/figures/dist.png", width=Cm(12))
+
+# 保存
+doc.save("thesis/论文题目_终稿.docx")
+```
+
+### B 路线（Node.js docx-skill-4-cn-paper）示例
+
+```javascript
+const { h1, h2, body, formula, threeLineTable, ref } = require('./scripts/new_doc');
+
+h1("第一章 引言");
+body("研究背景段落...");
+body("研究问题段落...");
+
+h2("1.1 研究背景");
+body("具体内容...");
+
+formula("Y_{it} = \\alpha + \\beta X_{it} + \\gamma Controls_{it} + \\mu_i + \\lambda_t + \\varepsilon_{it}", "(1)");
+
+threeLineTable(
+  ["变量", "样本量", "均值", "标准差"],
+  [
+    ["Y", "5000", "3.25", "1.02"],
+    ["X", "5000", "2.18", "0.85"],
+  ],
+  "表 1 主要变量描述性统计"
+);
+```
+
+### 状态更新
+
+Phase 9 完成后，更新 `.thesis_state.json`：
+- `current_phase`: 9 → completed
+- `thesis_path`: `"thesis/论文题目_终稿.docx"`

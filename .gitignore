@@ -13,3 +13,6 @@ node_modules/
 __pycache__/
 *.pyc
 .env
+
+# User-specific state files
+.thesis_state.json
