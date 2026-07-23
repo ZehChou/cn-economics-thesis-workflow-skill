@@ -34,6 +34,30 @@ Phase 0 ──→ Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4
 - **Stata MCP 集成**：通过 `mcp-for-stata` 在 Agent 中直接写 do file 并运行
 - **模块化结构**：各 Phase 拆分为独立文件，降低单文件复杂度，提升维护性
 - **状态持久化**：通过 `.thesis_state.json` 实现跨会话断点续传
+- **中英文文献双检索**：支持 Semantic Scholar（英文）+ CNKI CSSCI（中文），含引用拓扑分析
+- **前沿计量方法**：交叠 DID、Oster 系数稳定性检验、合成控制法、因果中介分析等
+- **审稿人/答辩问答库**：附录集成 12 个常见审稿问题的标准应对策略
+
+## 内容亮点
+
+### 文献检索（Phase 1-2）
+- 中英文双通道：Semantic Scholar（英文）+ CNKI CSSCI（中文）+ 引用拓扑分析
+- 文献量按学位层次区分：硕士 40-60 篇 / 博士 80-100 篇
+
+### 分析方法（Phase 4-8）
+- **经济显著性评估**：标准化系数、效应量对比、与文献对标
+- **内生性前沿**：交叠 DID（Callaway & Sant'Anna 2021）、Oster (2019) 检验、SCM
+- **机制检验**：主推江艇 (2022) 两步法 + 因果中介分析（Imai et al. 2010）
+- **异质性规范**：预先指定分组、多重假设检验校正、交互项检验约束
+
+### 写作指导（Phase 9）
+- **叙事结构**：每章明确叙事目标（引言→为什么重要，设计→识别策略可信度）
+- **写作顺序**：建议"结果先行，引言收尾"，避免反复修改
+
+### 附录体系
+- 审稿人/答辩常见问题应对策略（12 个高频问题）
+- Stata do file 归档规范（master.do + 复现检查清单）
+- 参考文献管理建议（Zotero + Jasminum + GB/T 7714）
 
 ## 安装
 
@@ -77,11 +101,14 @@ cn-economics-thesis-workflow-skill/
 │   ├── 07-mechanism.md             # Phase 7：机制检验
 │   ├── 08-heterogeneity.md         # Phase 8：异质性分析
 │   └── 09-writing.md               # Phase 9：论文撰写与排版成文
-├── appendices/                     # 附录
+├── appendices/                     # 附录（7 个）
 │   ├── A-easypaper-format.md       # easy-paper 格式规范
 │   ├── B-docx-helper.md            # docx 辅助函数接口定义
 │   ├── C-stata-mcp.md              # Stata MCP 配置与使用指南
-│   └── D-general-rules.md          # 通用规则、变量传递、错误处理
+│   ├── D-general-rules.md          # 通用规则、变量传递、错误处理
+│   ├── E-reviewer-qa.md            # 审稿人/答辩常见问题应对策略
+│   ├── F-stata-archive.md          # Stata do file 归档规范
+│   └── G-reference-management.md   # 参考文献管理建议
 ├── README.md                       # 本文件
 ├── opencode.jsonc                  # OpenCode 示例配置
 └── .gitignore
