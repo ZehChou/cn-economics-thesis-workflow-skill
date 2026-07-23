@@ -120,7 +120,7 @@ cn-economics-thesis-workflow-skill/
 |------|----------|------|
 | Python | ≥ 3.9 | 数据清洗、图表生成、A 路线排版 |
 | Node.js | ≥ 18 | B 路线排版（可选） |
-| Stata | ≥ 16 | 核心计量回归（需正版许可证） |
+| Stata | ≥ 16 | 核心计量回归 |
 | uv | ≥ 0.4.0 | 安装 mcp-for-stata |
 | pip | — | `python-docx`, `pandas`, `numpy`, `matplotlib`, `seaborn`, `scipy`, `openpyxl` |
 | npm | — | `docx`, `temml`, `fast-xml-parser`（B 路线） |
