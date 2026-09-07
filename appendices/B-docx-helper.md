@@ -4,20 +4,22 @@
 
 ### B.1 样式函数
 
+> **签名约定**：以下为 **A 路线（Python）** 签名——首个参数为 python-docx 的 `Document`。**B 路线（docx-skill-4-cn-paper）** 采用无状态 builder（`h1(text)` / `h2(text)` / `body(text)` / `formula(latex, number)` / `threeLineTable(headers, rows, caption)`），语义一一对应、签名不同。B 路线辅助函数位于外部仓库，需按其指引安装或拷贝到本项目 `scripts/` 后再引用（本 skill 仓库不含这些脚本文件，见 Phase 9 示例）。
+
 ```python
 def heading_1(doc, text: str) -> None:
-    """一级标题（自动编号 第一章/第二章...）
-       - 字体：黑体 16pt 居中
+    """一级标题（不自动编号，text 需含"第一章"等章节号）
+       - 字体：黑体三号 16pt 居中（附录 A.2）
        - 前后间距：6pt / 3pt"""
 
 def heading_2(doc, text: str) -> None:
-    """二级标题（自动编号 1.1/1.2...）
-       - 字体：黑体 14pt 左对齐
+    """二级标题（不自动编号，text 形如"1.1 研究背景"）
+       - 字体：黑体四号 14pt 左对齐
        - 前后间距：6pt / 3pt"""
 
 def heading_3(doc, text: str) -> None:
-    """三级标题（自动编号 1.1.1/1.1.2...）
-       - 字体：黑体 10.5pt 左对齐"""
+    """三级标题（不自动编号，text 形如"1.1.1 ..."）
+       - 字体：黑体小四 12pt 左对齐（附录 A.2）"""
 
 def body_text(doc, text: str) -> None:
     """正文段落
@@ -31,17 +33,16 @@ def formula(doc, latex: str, number: str) -> None:
        - B 路线：通过 temml → MathML → OMML"""
 
 def figure_caption(doc, text: str) -> None:
-    """图题（下方居中）
-       - 字体：黑体 9pt 居中"""
+    """图题（图下方居中）
+       - 字体：黑体五号 10.5pt 居中（附录 A.2）"""
 
 def table_caption(doc, text: str) -> None:
-    """表题（上方居中）
-       - 字体：黑体 9pt 居中"""
+    """表题（表上方居中）
+       - 字体：黑体五号 10.5pt 居中（附录 A.2）"""
 
 def note_text(doc, text: str) -> None:
-    """图注/表注
-       - 字体：宋体 9pt
-       - 位于图/表下方"""
+    """图注/表注（图表下方）
+       - 字体：宋体小五 9pt（附录 A.2）"""
 
 def abstract(doc, zh_text: str, en_text: str, keywords_zh: list, keywords_en: list) -> None:
     """中文摘要 + 关键词
@@ -89,9 +90,10 @@ def header_footer(doc, header_text: str = "", page_number: bool = True) -> None:
     """页眉页脚 + 页码"""
 
 def reference_list(doc, references: list) -> None:
-    """参考文献列表（GB/T 7714）
-       - 按拼音/字母排序
-       - 字体 9pt 宋体"""
+    """参考文献列表（GB/T 7714，体系须与正文一致，见 Phase 9 Step 9.8）
+       - 顺序编码制：按正文首次引用顺序编号，条目含 [J]/[M]/[D] 标识
+       - 著者-出版年制：按作者拼音/字母排序，条目不写 [J] 等标识
+       - 字体：宋体小五 9pt"""
 
 def cover_page(doc, title: str, author: str, **kwargs) -> None:
     """封面页（按学校/范文模板）"""

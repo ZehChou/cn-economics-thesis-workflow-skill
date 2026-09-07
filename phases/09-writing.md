@@ -13,7 +13,7 @@
 A. Python 路线（python-docx）
    依赖：Python 3.9+，pip install python-docx
    特点：纯 Python 生态，与数据分析流水线同语言，易于维护
-   公式支持：通过 latex2mathml 或 python-docx 原生公式
+   公式支持：python-docx 无原生公式 API，需以 OMML 注入（实现见附录 B）；复杂公式建议走 B 路线
 
 B. Node.js 路线（docx-skill-4-cn-paper）
    依赖：Node.js 18+，npm install docx temml fast-xml-parser
@@ -107,9 +107,8 @@ AI 先生成全文大纲：
 （约 15-20 页正文 + 附录）
 ```
 
-用户确认大纲后进入正文撰写。
+🔴 CHECKPOINT：用户确认大纲后，方可进入正文撰写。
 
-### Step 9.4：正文撰写（占位符策略）
 ### Step 9.4：叙事结构指导
 
 撰写前，AI 应向用户说明每一章的**叙事目标**，确保全文逻辑连贯：
@@ -232,19 +231,24 @@ AI 先生成全文大纲：
 
 ### Step 9.8：引文标注（占位符替换）
 
-用户补充文献后，AI 重新精读所有引用到的 PDF，提取准确引用信息：
+> **引用体系须在 Phase 0 与用户确认（随学校模板）**：默认 GB/T 7714-2015 **顺序编码制**（与 easy-paper 模板一致）；若学校采用**著者-出版年制**则全文统一切换。两制互斥，**不得混用**（详见附录 A.5 / G.4）。
 
+用户补充文献后，AI 重新精读所有引用到的 PDF，提取准确引用信息，再按下述对应体系替换 `[CIT:...]` 占位符。
+
+**默认·顺序编码制（正文上标编号，文末按首次引用顺序列条目）：**
 ```
-引用信息标注（每条占位符替换）
-─────────────────────────────────
-[CIT:Author2020_keyfinding]
-  → (王某某等, 2020) 或
-  → (Smith et al., 2020) 或
-  → 多篇合并时：研究指出...（王某某等, 2020; Smith et al., 2020）
-─────────────────────────────────
+[CIT:Author2020_keyfinding]  →  研究指出[1]。
+多篇合并：[CIT:A;B]          →  研究指出[1-2] 或 [1,3]。
+文末条目示例见附录 A.5 / G.4（[J]/[M]/[D]/[EB/OL] 标识）。
 ```
 
-批量替换所有 `[CIT:...]` 占位符为 `(Author, Year)` 格式。同时生成参考文献列表（GB/T 7714 格式）。
+**备选·著者-出版年制（正文 (作者, 年份)，文末按作者拼音/字母排序，条目不写 [J] 等标识）：**
+```
+[CIT:Author2020_keyfinding]  →  (王某某等, 2020) 或 (Smith et al., 2020)
+多篇合并                     →  研究指出…（王某某等, 2020; Smith et al., 2020）
+```
+
+建议统一交由 Zotero + Better BibTeX（引用键 AuthorYear）+ GB/T 7714 CSL 样式自动输出，避免手写混用。
 
 ### Step 9.9：图表推荐与插入
 
@@ -274,11 +278,11 @@ AI 检查论文中需要图表的位置，询问用户：
 
 用户确认后，AI 通过 python-docx（A 路线）或 docx npm（B 路线）将图表插入对应章节位置。
 
-图表排版格式（三线表标准）：
-- 表题在上：小五号黑体，居中
+图表排版格式（三线表标准，字号以附录 A.2 为唯一真源）：
+- 表题在上：黑体五号（10.5pt），居中
 - 表格为三线表（顶线 1.5pt / 栏目线 0.75pt / 底线 1.5pt）
-- 表注在下：小五号宋体
-- 图题在下：小五号黑体，居中
+- 表注在下：宋体小五（9pt）
+- 图题在下：黑体五号（10.5pt），居中
 
 ### Step 9.10：最终排版
 
@@ -308,12 +312,22 @@ AI 执行最终排版流程：
 
 ```python
 from docx import Document
-from docx.shared import Pt, Cm, Inches
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Pt, Cm, RGBColor
+from docx.oxml.ns import qn
+
+
+def set_run_font(run, name_cn, size_pt, bold=False):
+    """同时设置西文与中文(eastAsia)字体；仅设 font.name 对中文字符无效"""
+    run.font.name = name_cn
+    run._element.rPr.rFonts.set(qn('w:eastAsia'), name_cn)
+    run.font.size = Pt(size_pt)
+    run.font.bold = bold
+    run.font.color.rgb = RGBColor(0, 0, 0)  # python-docx 标题默认主题色为蓝色，须改黑
+
 
 doc = Document()
 
-# 页面设置
+# 页面设置（A4，边距见附录 A.1）
 section = doc.sections[0]
 section.page_width = Cm(21)
 section.page_height = Cm(29.7)
@@ -322,21 +336,17 @@ section.right_margin = Cm(2.5)
 section.top_margin = Cm(2.5)
 section.bottom_margin = Cm(2.5)
 
-# 一级标题
-h1 = doc.add_heading("第一章 引言", level=1)
-h1_run = h1.runs[0]
-h1_run.font.name = '黑体'
-h1_run.font.size = Pt(14)
+# 一级标题：黑体三号 16pt（附录 A.2）；不自动编号，标题文本显式含“第一章”
+h1 = doc.add_heading(level=1)
+set_run_font(h1.add_run("第一章 引言"), "黑体", 16)
 
-# 正文段落
+# 正文段落：宋体小四 12pt、首行缩进 2 字符、1.5 倍行距
 p = doc.add_paragraph()
-p.style = doc.styles['Normal']
-p_run = p.runs[0]
-p_run.font.name = '宋体'
-p_run.font.size = Pt(12)
+p.paragraph_format.first_line_indent = Pt(24)  # 12pt × 2 字符
 p.paragraph_format.line_spacing = 1.5
+set_run_font(p.add_run("研究背景与问题提出……"), "宋体", 12)
 
-# 插入图片
+# 插入图片（图题在图下方，见附录 A.2）
 doc.add_picture("output/figures/dist.png", width=Cm(12))
 
 # 保存
@@ -346,13 +356,15 @@ doc.save("thesis/论文题目_终稿.docx")
 ### B 路线（Node.js docx-skill-4-cn-paper）示例
 
 ```javascript
+// docx-skill-4-cn-paper 的辅助函数需先按其仓库指引安装/拷贝到项目（scripts/new_doc.js 不在本 skill 仓库内）
 const { h1, h2, body, formula, threeLineTable, ref } = require('./scripts/new_doc');
 
-h1("第一章 引言");
+h1("引言");          // h1 会自动加阿拉伯数字编号（1、2…）
+// 中文式“第一章 引言”请用该库的 h1Manual（若提供），避免输出“1 第一章 引言”
 body("研究背景段落...");
 body("研究问题段落...");
 
-h2("1.1 研究背景");
+h2("研究背景");      // 自动编号为 1.1
 body("具体内容...");
 
 formula("Y_{it} = \\alpha + \\beta X_{it} + \\gamma Controls_{it} + \\mu_i + \\lambda_t + \\varepsilon_{it}", "(1)");
@@ -363,7 +375,7 @@ threeLineTable(
     ["Y", "5000", "3.25", "1.02"],
     ["X", "5000", "2.18", "0.85"],
   ],
-  "表 1 主要变量描述性统计"
+  "表 1 主要变量描述性统计"   // 表题在上、五号黑体（附录 A.2）
 );
 ```
 
