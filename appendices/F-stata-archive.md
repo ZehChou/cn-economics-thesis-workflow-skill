@@ -18,8 +18,11 @@
 * ── 环境设置 ──
 clear all
 set more off
-cd "{project_root}"
+cd "$project_root"        // 由 master.do 定义；单独运行需先 global project_root "..."
 cap log close
+version 16               // 与使用的 Stata 版本一致（复现用）
+* 若本文件含随机过程（安慰剂/Bootstrap/PSM 抽样），固定随机种子：
+* set seed 20240601
 
 * ── 日志文件 ──
 log using "log/{文件名}.log", replace text
@@ -51,6 +54,8 @@ do/
 ├── 06-heterogeneity.do      # 异质性分析
 └── master.do                # 主控文件，按顺序调用所有 do file
 ```
+
+> 各 Phase 文件中的示例名（如 `baseline.do`、`endogeneity.do`）与本编号体系含义相同：统一以本前缀为准（`02`=基准回归、`03`=内生性、`04`=稳健性、`05`=机制、`06`=异质性），避免一个项目两套文件名。
 
 ### F.3 主控文件（master.do）
 
@@ -103,6 +108,9 @@ label values education edu
 □ 每个 do file 生成独立的 log 文件
 □ 数据文件放在 cleaned/ 目录（只读）
 □ 原始数据文件放在 data/raw/ 目录（只读，不修改）
-□ 项目路径可配置（全局变量 project_root）
-□ 记录 Stata 版本和使用的包版本
+□ 项目路径可配置（全局变量 project_root，由 master.do 定义）
+□ 每个 do file 顶部含 version 语句；记录所用包版本（`which reghdfe` 等）
+□ 随机化过程（安慰剂/Bootstrap/PSM）固定 set seed 并记录种子
+□ 所有尝试过的规格（含未报告的）记入 log/spec-search.csv，供附录全量披露
+□ 回归表格附注说明标准误类型与聚类层级（esttab addnotes）
 ```

@@ -18,13 +18,14 @@
    - 推荐：Bonferroni 校正 / FDR (Benjamini-Hochberg) 校正
    - 不做校正的风险：分组一多，单纯靠 p 值不可靠
 
-□ 是否同时报告了交互项检验？
+□ 是否报告了组间差异检验？
    - 分组回归只能看"组内系数"，不能直接检验组间差异
-   - 必须通过交互项（X × group）或似无相关模型 (SUR) 检验组间差异
+   - 必须通过交互项（X × group）检验组间差异；⚠️ 本工作流基于 reghdfe，
+     suest 与 reghdfe 不兼容，勿在分组 reghdfe 后使用 suest（详见 Step 8.3）
 
-□ 组间样本量是否均衡？
-   - 若某组样本量过小，分组回归结果不可靠
-   - 建议：各子组样本量不低于总样本的 10%
+□ 组间样本量与精度是否可比？
+   - 某组样本量过小会降低组内估计精度与统计功效
+   - 报告各组 N、聚类数量及关键变量分布的可比性，而不是设固定百分比阈值
 ```
 
 ### Step 8.1：可用分组变量扫描
@@ -73,7 +74,7 @@ AI 基于文献和逻辑推荐 2-3 个预先指定的分组维度：
 ⚠️ 若维度超过 3 个，AI 应提醒用户进行多重假设检验校正。
 ```
 
-用户选择 2-3 个维度。
+🔴 CHECKPOINT：用户确认 2-3 个维度（须为预先指定）后，方可进入 Step 8.3。
 
 ### Step 8.3：写 do file
 
@@ -84,29 +85,25 @@ AI 基于文献和逻辑推荐 2-3 个预先指定的分组维度：
 
 use "cleaned/dataset.dta", clear
 
-* ── 方法一：交互项检验（推荐，可直接检验组间差异）──
-* reg Y c.X##i.group $controls i.id i.year, vce(cluster id)
+* 若分组变量为字符串，先编码为数值因子：
+* encode {Group variable}, gen(group)   // 0/1/2... 类别
 
-* ── 方法二：分组回归 + SUR 组间系数差异检验 ──
-* 维度 1：{Group variable}
+* ── 方法一（推荐）：全交互扩展模型，直接检验组间差异 ──
+reghdfe Y c.X##i.group $controls, absorb(i.id i.year) vce(cluster id)
+test 1.group#c.X          // 检验 X 的效应在基准组 vs 其他组是否不同
+eststo inter
 
-* 子组 A
-preserve
-keep if group == "A"
-reghdfe Y X $controls, absorb(i.id i.year) vce(cluster id)
-eststo groupA
-restore
+* 注：连续 X 与因子分组交互用 c.X##i.group；若分组为连续变量，用 c.X##c.Z
+* 并按 Z 的均值±1SD 报告边际效应（margins/marginsplot）
 
-* 子组 B
-preserve
-keep if group == "B"
-reghdfe Y X $controls, absorb(i.id i.year) vce(cluster id)
-eststo groupB
-restore
-
-* SUR 组间系数差异检验
-* suest groupA groupB
-* test [groupA_mean]X = [groupB_mean]X
+* ── 方法二（不建议用于本文 reghdfe 框架）：分组回归 + suest ──
+* suest 只适用于普通 regress（无 absorb、无 reghdfe）估计结果；
+* 高维固定效应下的组间差异一律用方法一。若确需分组估计作对照：
+*   preserve
+*   keep if group == 1
+*   reg Y X $controls i.id i.year, vce(cluster id)   // 或 reghdfe，仅展示组内系数
+*   eststo groupA
+*   restore
 ```
 
 ### Step 8.4：结果解读

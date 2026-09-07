@@ -53,10 +53,10 @@ Zotero 配置步骤：
 
 ### G.4 引用格式说明
 
-本 skill 在 Phase 9 中使用 `[CIT:AuthorYear_关键词]` 占位符策略，最终替换为 GB/T 7714 格式引文：
+本 skill 在 Phase 9 使用 `[CIT:AuthorYear_关键词]` 占位符策略，再按所选引用体系统一替换（体系须与学校模板一致并在 Phase 0 确认，默认 GB/T 7714-2015 **顺序编码制**）：
 
 ```
-GB/T 7714-2015 常见格式：
+GB/T 7714-2015 · 顺序编码制（默认）—— 正文上标编号 [n]，文末按首次引用顺序列条目：
 
 期刊论文：
   张三, 李四, 王五. 数字化转型对全要素生产率的影响[J]. 经济研究, 2020, 55(1): 45-60.
@@ -67,10 +67,14 @@ GB/T 7714-2015 常见格式：
 学位论文：
   李四. 人工智能对劳动力市场的影响研究[D]. 北京: 北京大学, 2022.
 
-英文文献：
-  Autor, D. H., Dorn, D., & Hanson, G. H. The China syndrome: Local labor market effects
-  of import competition in the United States[J]. American Economic Review, 2013, 103(6): 2121-2168.
+英文文献（姓全大写、名缩写无点；3 人以上列前 3 后加 et al.）：
+  AUTOR D H, DORN D, HANSON G H. The China syndrome: local labor market effects of
+  import competition in the United States[J]. American Economic Review, 2013, 103(6): 2121-2168.
+
+备选·著者-出版年制（若学校要求）：正文 (作者, 年份)；文末按作者字母/拼音排序，条目不写 [J]/[M]/[D] 标识。两制互斥，全文只选其一。
 ```
+
+建议：统一交由 Zotero + Better BibTeX + GB/T 7714 CSL 样式自动输出，避免手写混用（见 G.3）。
 
 ### G.5 文献检索与去重建议
 

@@ -2,22 +2,27 @@
 
 ### Step 0.1：依赖检测
 
-AI 自动检测以下环境是否就绪：
+AI 自动检测以下环境是否就绪（按你的操作系统执行对应命令；命令不存在时把报错发给 AI，由 AI 给出本机安装指引）：
 
+**macOS / Linux（bash）**：
 ```bash
-# Python
-python3 --version               # 需 ≥ 3.9
-pip3 list 2>/dev/null | grep -i "python-docx\|openpyxl\|pandas\|numpy\|matplotlib\|seaborn\|scipy\|statsmodels"
-
-# Node.js（B 路线需要）
-node --version                  # 需 ≥ 18
+python3 --version                       # 需 ≥ 3.9
+pip3 list 2>/dev/null | grep -iE "python-docx|openpyxl|pandas|numpy|matplotlib|seaborn|scipy|statsmodels"
+node --version                          # 需 ≥ 18（B 路线）
 npm list -g docx 2>/dev/null
+uv --version                            # 需 ≥ 0.4.0（mcp-for-stata）
+stata-mp --version || stata --version   # 或 stata-se / StataMP
+```
 
-# Stata（计量运行需要）
-stata --version                 # 或 stata-mp / stata-se
-
-# uv（mcp-for-stata 安装需要）
-uv --version                    # 需 ≥ 0.4.0
+**Windows（PowerShell）**：
+```powershell
+python --version                        # Windows 通常无 python3 别名
+python -m pip list | Select-String "python-docx|openpyxl|pandas|numpy|matplotlib|seaborn|scipy|statsmodels"
+node --version
+npm list -g docx
+uv --version
+# Stata：Windows 无统一命令行别名，用 GUI 或控制台版（按实际安装路径）：
+# & "C:\Program Files\StataMP64\StataMP-64.exe" /version
 ```
 
 缺失项由 AI 提示安装命令。
