@@ -37,6 +37,9 @@ Phase 0 ──→ Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4
 - **中英文文献双检索**：支持 Semantic Scholar（英文）+ CNKI CSSCI（中文），含引用拓扑分析
 - **前沿计量方法**：交叠 DID、Oster 系数稳定性检验、合成控制法、因果中介分析等
 - **审稿人/答辩问答库**：附录集成 12 个常见审稿问题的标准应对策略
+- **研究诚信纪律**：附录 D.5 红灯清单禁止 p-hacking / 编造结果 / 无记录换规格；回归尝试写入 `log/spec-search.csv` 并全量披露
+- **可复现 do-file**：模板含 `global` 宏定义、`version`/`set seed` 与包版本记录，可整段运行（master.do 一键复现）
+- **引用体系自洽**：默认 GB/T 7714 顺序编码制（著者-出版年制可选），`[CIT:]` 占位符按所选体制统一替换，两制不混用
 
 ## 内容亮点
 
@@ -57,6 +60,7 @@ Phase 0 ──→ Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4
 ### 附录体系
 - 审稿人/答辩常见问题应对策略（12 个高频问题）
 - Stata do file 归档规范（master.do + 复现检查清单）
+- 通用规则：研究诚信红灯清单（D.5）、10 类失败模式 fallback、状态字段说明
 - 参考文献管理建议（Zotero + Jasminum + GB/T 7714）
 
 ## 安装
