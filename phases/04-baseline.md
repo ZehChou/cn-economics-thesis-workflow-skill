@@ -44,43 +44,51 @@ Y_it = α + β*X_it + γ*Controls_it + μ_i + λ_t + ε_it
 
 ### Step 4.3：写 do file
 
-AI 通过 Stata MCP 的 `stata_run_file` 工具执行 do file。在写 do file 之前，先通过 `stata_run_command` 快速检测数据加载是否正常：
+AI 通过 Stata MCP 的 do-file 执行工具运行 do file（工具名以当前客户端实际暴露的 tools 列表为准，mcp-for-stata 核心工具现为 `stata_do`，详见附录 C.3 版本说明）。写 do file 之前，先用数据信息工具或单条命令确认数据加载正常：
 
 ```stata
 * do/baseline.do
 * 基准回归
 * 生成时间：{date}
+* 控制变量宏：由 .thesis_state.json 的 variables.controls 自动回填后写死在此处，
+*             不要在回归命令中直接引用未定义的 $controls（否则 do file 运行报错）
 
 * ── 环境设置 ──
 clear all
 set more off
-cd "{project_root}"
+cd "$project_root"     // 由 master.do 定义；单独运行请先 global project_root "..."
+global controls "age age2 income edu ..."   // ← 替换为实际控制变量列表（中文标签见下）
 
 * ── 加载数据 ──
 use "cleaned/dataset.dta", clear
 
 * ── 变量标签 ──
-* (自动生成的标签代码)
+* (自动生成的标签代码，见附录 F.4)
 
-* ── 回归序列 ──
+* ── 回归序列（4 个模型，与下方表格列数一一对应）──
+eststo clear
 * Model 1: 仅核心变量
 eststo m1: reg Y X, robust
 
 * Model 2: 加入控制变量
 eststo m2: reg Y X $controls, robust
 
-* Model 3: 加入固定效应
+* Model 3: 加入个体+年份固定效应
 eststo m3: reghdfe Y X $controls, absorb(i.id i.year) vce(cluster id)
 
-* ... 完整模型
+* Model 4: 完整模型（最终基准，可加更高维固定效应）
+eststo m4: reghdfe Y X $controls, absorb(i.id i.year i.industry) vce(cluster id)
 
 * ── 输出表格 ──
-esttab m1 m2 m3 using "output/tables/baseline.rtf", replace ///
+esttab m1 m2 m3 m4 using "output/tables/baseline.rtf", replace ///
     b(3) se(3) star(* 0.1 ** 0.05 *** 0.01) ///
     stats(N r2 F, fmt(0 3 2)) ///
     title("基准回归结果") ///
-    mtitles("(1)" "(2)" "(3)" "(4)")
+    mtitles("(1)" "(2)" "(3)" "(4)") ///
+    addnotes("注：括号内为标准误；*** p<0.01, ** p<0.05, * p<0.1；m3-m4 标准误聚类到个体。")
 ```
+
+> 🛟 失败分支：do file 运行失败 → 读取 Stata 日志定位（包缺失/路径/变量名/宏未定义最常见），修复后重试；**同一错误连续失败 2 次** → 暂停并把日志交给用户，请其检查数据与全局宏配置。详细错误处理见附录 D.2。
 
 ### Step 4.4：结果解读（含经济显著性）
 
@@ -115,6 +123,11 @@ esttab m1 m2 m3 using "output/tables/baseline.rtf", replace ///
 
 ### Step 4.5：显著性改善方案
 
+> 🔴 **研究诚信红线（详见附录 D.5）**：下述菜单用于诊断**设定问题**，不是“调到显著为止”的工具。
+> 更换 Y/X 度量、样本区间、固定效应或聚类层，必须先用理论与数据威胁给出理由；
+> 每一轮尝试写入 `log/spec-search.csv`（规格、系数、SE、p 值、是否采纳、理由），
+> 论文定稿时**全量披露**已尝试规格（正文报告最终选择，其余列于附录或脚注）。
+
 若核心变量 p > 0.1 或经济显著性偏弱，AI 按优先级推荐以下方案：
 
 ```
@@ -130,7 +143,7 @@ esttab m1 m2 m3 using "output/tables/baseline.rtf", replace ///
 请选择要尝试的方案（可多选）：A / B / C / ...
 ```
 
-用户选择后，AI 更新 do file 重新运行，直至用户对结果满意。
+用户选择后，AI 更新 do file 重新运行并记录该轮规格（写入 spec-search 日志）；若多轮尝试后仍不理想，转 Phase 5 内生性诊断，避免无记录的无限规格搜索。
 
 ### 状态更新
 

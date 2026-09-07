@@ -45,8 +45,8 @@ AI 从三个维度汇合识别内生性来源：
 | 方法 | 核心文献 | 适用场景 | 中文经济学顶刊采用趋势 |
 |------|----------|----------|----------------------|
 | **交叠 DID（Staggered DID）** | Callaway & Sant'Anna (2021); Sun & Abraham (2021); Goodman-Bacon (2021) | 多期政策冲击，处理时间交错（各期陆续接受处理） | ⬆️⬆️ 近年快速成为顶刊标配 |
-| **Oster (2019) 系数稳定性检验** | Oster (2019, JEEA) | 检验遗漏变量偏误的敏感度，给出 β 的"识别区间" | ⬆️⬆️ 已被广泛接受 |
-| **异质性处理效应下的 TWFE 偏误修正** | de Chaisemartin & D'Haultfoeuille (2020, AER); Borushek et al. (2024) | 处理效应异质性下的 TWFE 估计偏误诊断 | ⬆️⬆️ |
+| **Oster (2019) 系数稳定性检验** | Oster (2019, JBES) | 检验遗漏变量偏误的敏感度，给出 β 的"识别区间" | ⬆️⬆️ 已被广泛接受 |
+| **异质性处理效应下的 TWFE 偏误修正** | de Chaisemartin & D'Haultfœuille (2020, AER); Borusyak, Jaravel & Spiess (2024, REStud) | 处理效应异质性下的 TWFE 估计偏误诊断与纠偏估计 | ⬆️⬆️ |
 | **合成控制法 (SCM)** | Abadie (2021, JEL); Abadie et al. (2010) | 单个/少量处理单元的政策评估 | ⬆️ 逐渐普及 |
 | **连续 DID** | Callaway et al. (2024) | 处理强度为连续变量的 DID | ⬆️ 最新前沿 |
 
@@ -76,10 +76,16 @@ Oster (2019) 系数稳定性检验
   • 若区间不包含 0 → 结果对遗漏变量偏误稳健
   • 若区间包含 0 → 结果对遗漏变量偏误敏感
 
-Stata 实现：
-  psacalc beta1 $controls, ///
-    treat(X) delta(1) ///
-    rmax({R²_max})
+Stata 实现（两步法；$controls 需在 do-file 头部定义，见 Phase 4 模板）：
+  * 第一步：估计含控制变量的完整模型（固定效应/聚类与基准一致）
+  reghdfe Y X $controls, absorb(i.id i.year) vce(cluster id)
+  * 第二步：调用 psacalc 读取上一回归结果（控制变量已在模型中，
+  *         勿再以位置参数传入；无 treat() 选项）
+  * 官方 psacalc 基于 reg 类 e()、不支持 reghdfe；若上一步由 reghdfe 估计，
+  * 请安装社区兼容版 psacalc2（GitHub: ArthurHowardMorris/psacalc_supports_reghdfe）
+  * Rmax 上限为 1，常见取 Rmax = min(1.3 × 全模型 R², 1)
+  ssc install psacalc
+  psacalc beta X, delta(1) rmax(1)
 ```
 
 ### Step 5.4：多期 DID 的处理（若适用）
@@ -97,15 +103,18 @@ Stata 实现：
 2. 估计：使用前沿估计量
    → Callaway & Sant'Anna (2021) 组-时间平均处理效应
    → Sun & Abraham (2021) 交互加权估计量 (IW)
-   → Borushek et al. (2024) 局部投影估计量
+   → Borusyak, Jaravel & Spiess (2024) 高效插补（imputation）估计量
+   → （可选）Dube, Girardi, Jordà & Taylor (2023) 局部投影事件研究估计量
 
 3. 理解：异质性处理效应的来源
    → 早处理 vs 晚处理：效应是否不同？
    → 短期 vs 长期：效应是否随时间衰减？
 
-Stata 实现：
-  csdid Y X $controls, ivar(id) time(year) gvar(first_treat)
-  csdid_plot
+Stata 实现（ssc install csdid；gvar 编码：未处理单元 first_treat=0）：
+  csdid Y X $controls, ivar(id) time(year) gvar(first_treat)   // 默认对照=not-yet-treated
+  estat event                // 动态处理效应汇总（含置信带），必做
+  csdid_plot                 // 事件研究图（需要时）
+  * 若希望以 never-treated 为对照：csdid ... , notyet
 ```
 
 ### Step 5.5：数据缺口检查
@@ -155,6 +164,7 @@ Stata 实现：
 * do/endogeneity.do
 * 内生性处理
 * 本 do file 产出的模型框架将在 Phase 6-8 中被继承
+* 注：使用 $controls 前须在文件头定义（见 Phase 4 模板/附录 F），或直接用具体变量列表替换
 
 * ── 第一阶段（IV）或 倾向得分估计（PSM）──
 * ...
@@ -163,7 +173,9 @@ Stata 实现：
 * ...
 
 * ── Oster (2019) 系数稳定性检验 ──
-* psacalc beta1 $controls, treat(X) delta(1) rmax(1.3)
+* (先估计含控制变量与固定效应的完整模型，再执行)
+* reghdfe Y X $controls, absorb(i.id i.year) vce(cluster id)
+* psacalc beta X, delta(1) rmax(1)   // Rmax≤1，见 Step 5.3 说明
 
 * ── 与基准回归对比 ──
 * 将基准回归结果保存在 output/tables/baseline.rtf
@@ -204,7 +216,7 @@ Stata 实现：
 
 ### Step 5.9：确立最终模型框架
 
-用户确认结果后，AI 记录**最终模型框架**，供 Phase 6-8 继承：
+🔴 CHECKPOINT：用户确认结果后，AI 记录**最终模型框架**，供 Phase 6-8 继承（此后不回退 OLS）：
 
 ```
 最终模型框架（Phase 6-8 继承）
