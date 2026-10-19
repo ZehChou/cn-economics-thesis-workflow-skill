@@ -1,10 +1,11 @@
 ## 附录 B：辅助函数 API 规约（源自 docx-skill-4-cn-paper）
 
-> 本附录定义了 Phase 9 排版阶段使用的辅助函数接口。A 路线（Python）和 B 路线（Node.js）各实现一套相同语义的函数。
+> 本附录定义了 Phase 9 排版阶段使用的辅助函数接口。路线 P（Python）和路线 N（Node.js）各实现一套相同语义的函数。
+> （注：这里的 P/N 是**排版路线**，与计量后端 A/B 是两回事——后端 A=Stata、后端 B=Python。）
 
 ### B.1 样式函数
 
-> **签名约定**：以下为 **A 路线（Python）** 签名——首个参数为 python-docx 的 `Document`。**B 路线（docx-skill-4-cn-paper）** 采用无状态 builder（`h1(text)` / `h2(text)` / `body(text)` / `formula(latex, number)` / `threeLineTable(headers, rows, caption)`），语义一一对应、签名不同。B 路线辅助函数位于外部仓库，需按其指引安装或拷贝到本项目 `scripts/` 后再引用（本 skill 仓库不含这些脚本文件，见 Phase 9 示例）。
+> **签名约定**：以下为 **路线 P（Python）** 签名——首个参数为 python-docx 的 `Document`。**路线 N（docx-skill-4-cn-paper）** 采用无状态 builder（`h1(text)` / `h2(text)` / `body(text)` / `formula(latex, number)` / `threeLineTable(headers, rows, caption)`），语义一一对应、签名不同。路线 N辅助函数位于外部仓库，需按其指引安装或拷贝到本项目 `scripts/` 后再引用（本 skill 仓库不含这些脚本文件，见 Phase 9 示例）。
 
 ```python
 def heading_1(doc, text: str) -> None:
@@ -29,8 +30,8 @@ def body_text(doc, text: str) -> None:
 
 def formula(doc, latex: str, number: str) -> None:
     """居中公式 + 右对齐编号
-       - A 路线：通过 latex2mathml 或 OMML
-       - B 路线：通过 temml → MathML → OMML"""
+       - 路线 P：通过 latex2mathml 或 OMML
+       - 路线 N：通过 temml → MathML → OMML"""
 
 def figure_caption(doc, text: str) -> None:
     """图题（图下方居中）
@@ -83,8 +84,8 @@ def page_setup(doc, **kwargs) -> None:
 
 def table_of_contents(doc) -> None:
     """生成目录占位符（用户 Word 中更新域）
-       - A 路线：插入 TOC 域代码
-       - B 路线：同"""
+       - 路线 P：插入 TOC 域代码
+       - 路线 N：同"""
 
 def header_footer(doc, header_text: str = "", page_number: bool = True) -> None:
     """页眉页脚 + 页码"""
@@ -101,7 +102,7 @@ def cover_page(doc, title: str, author: str, **kwargs) -> None:
 
 ### B.4 路线差异对照
 
-| 功能 | A 路线（Python） | B 路线（Node.js） |
+| 功能 | 路线 P（Python） | 路线 N（Node.js） |
 |------|-----------------|-------------------|
 | 库依赖 | `python-docx` | `docx` (npm) |
 | 公式渲染 | `latex2mathml` 或 `python-docx` OMML | `temml` → MathML → `docx` OMML |

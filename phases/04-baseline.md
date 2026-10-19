@@ -1,6 +1,6 @@
 ## Phase 4：基准回归
 
-> 本阶段遵循主 Skill 中定义的**通用交互模式：计量分析流程**（方法推荐 → 用户确认 → 数据检查 → 写 do file → 结果解读 → 迭代）。
+> 本阶段遵循主 Skill 中定义的**通用交互模式：计量分析流程**（方法推荐 → 用户确认 → 检查变量就绪 → 写分析脚本并运行 → 结果解读 → 迭代）。
 
 ### Step 4.1：方法推荐
 
@@ -19,7 +19,7 @@ L2/L3 用户：AI 同时讨论模型假设和识别条件
 
 ### Step 4.2：模型设定说明
 
-在写 do file 之前，AI 先向用户说明完整模型设定：
+在写分析脚本之前，AI 先向用户说明完整模型设定：
 
 ```
 模型设定
@@ -42,53 +42,47 @@ Y_it = α + β*X_it + γ*Controls_it + μ_i + λ_t + ε_it
 输出：回归系数表（output/tables/baseline.rtf）、各模型 R²、F 统计量
 ```
 
-### Step 4.3：写 do file
+### Step 4.3：写分析脚本并运行
 
-AI 通过 Stata MCP 的 do-file 执行工具运行 do file（工具名以当前客户端实际暴露的 tools 列表为准，mcp-for-stata 核心工具现为 `stata_do`，详见附录 C.3 版本说明）。写 do file 之前，先用数据信息工具或单条命令确认数据加载正常：
+> **代码不在本文件**。按 `analysis_backend` 取对应附录的可运行模板：
+>
+> | 后端 | 代码位置 | 脚本名 |
+> |---|---|---|
+> | B · Python（默认） | **附录 H.2** | `scripts/02_baseline.py` |
+> | A · Stata（可选） | **附录 I.3** | `do/02-baseline.do` |
+>
+> 两个模板产出同一张四列基准表（(1) 仅 X → (4) 完整模型），列序与下方"表格形态"一致。
 
-```stata
-* do/baseline.do
-* 基准回归
-* 生成时间：{date}
-* 控制变量宏：由 .thesis_state.json 的 variables.controls 自动回填后写死在此处，
-*             不要在回归命令中直接引用未定义的 $controls（否则 do file 运行报错）
+**表格形态（后端无关，Phase 9 直接按此排版）**
 
-* ── 环境设置 ──
-clear all
-set more off
-cd "$project_root"     // 由 master.do 定义；单独运行请先 global project_root "..."
-global controls "age age2 income edu ..."   // ← 替换为实际控制变量列表（中文标签见下）
-
-* ── 加载数据 ──
-use "cleaned/dataset.dta", clear
-
-* ── 变量标签 ──
-* (自动生成的标签代码，见附录 F.4)
-
-* ── 回归序列（4 个模型，与下方表格列数一一对应）──
-eststo clear
-* Model 1: 仅核心变量
-eststo m1: reg Y X, robust
-
-* Model 2: 加入控制变量
-eststo m2: reg Y X $controls, robust
-
-* Model 3: 加入个体+年份固定效应
-eststo m3: reghdfe Y X $controls, absorb(i.id i.year) vce(cluster id)
-
-* Model 4: 完整模型（最终基准，可加更高维固定效应）
-eststo m4: reghdfe Y X $controls, absorb(i.id i.year i.industry) vce(cluster id)
-
-* ── 输出表格 ──
-esttab m1 m2 m3 m4 using "output/tables/baseline.rtf", replace ///
-    b(3) se(3) star(* 0.1 ** 0.05 *** 0.01) ///
-    stats(N r2 F, fmt(0 3 2)) ///
-    title("基准回归结果") ///
-    mtitles("(1)" "(2)" "(3)" "(4)") ///
-    addnotes("注：括号内为标准误；*** p<0.01, ** p<0.05, * p<0.1；m3-m4 标准误聚类到个体。")
+```
+表 5-x  基准回归结果
+─────────────────────────────────────────────
+变量            (1)      (2)      (3)      (4)
+X              β        β        β        β
+              (se)     (se)     (se)     (se)
+控制变量        否       是       是       是
+个体固定效应     否       否       是       是
+年份固定效应     否       否       是       是
+行业×年份FE     否       否       否       是
+N              n        n        n        n
+R²            r2       r2       r2       r2
+─────────────────────────────────────────────
+注：括号内为标准误；*** p<0.01, ** p<0.05, * p<0.1；(3)(4) 列标准误聚类到个体。
 ```
 
-> 🛟 失败分支：do file 运行失败 → 读取 Stata 日志定位（包缺失/路径/变量名/宏未定义最常见），修复后重试；**同一错误连续失败 2 次** → 暂停并把日志交给用户，请其检查数据与全局宏配置。详细错误处理见附录 D.2。
+**运行前自检（防止静默错误）**
+
+```
+□ 控制变量列表来自 .thesis_state.json，不是凭记忆写的
+□ 固定效应与聚类层级在模型设定说明（Step 4.2）中已对用户讲清
+□ 含随机过程的脚本已固定随机种子（附录 D.5 第 8 条）
+□ 每个跑过的规格写入 log/spec-search.csv
+```
+
+> 🛟 失败分支：脚本报错 → 读完整错误栈定位（包未装 / 列名不存在 / 数据类型 / 公式写错最常见），
+> 修复后重试；**同一错误连续失败 2 次** → 暂停，把报错原文与涉及的列交给用户，请其确认数据结构。
+> 详细错误处理见附录 D.2。
 
 ### Step 4.4：结果解读（含经济显著性）
 
@@ -143,7 +137,7 @@ esttab m1 m2 m3 m4 using "output/tables/baseline.rtf", replace ///
 请选择要尝试的方案（可多选）：A / B / C / ...
 ```
 
-用户选择后，AI 更新 do file 重新运行并记录该轮规格（写入 spec-search 日志）；若多轮尝试后仍不理想，转 Phase 5 内生性诊断，避免无记录的无限规格搜索。
+用户选择后，AI 更新分析脚本重新运行，并把这轮规格写入 spec-search 日志；若多轮尝试后仍不理想，转 Phase 5 内生性诊断，避免无记录的无限规格搜索。
 
 ### 状态更新
 

@@ -36,7 +36,7 @@ references/
 
 PDF 文件名格式：{AuthorYear}_{ShortTitle}.pdf
   示例：Autor2013_TradeJobs.pdf
-  注意：文件名中不要包含空格 / 特殊字符
+  注意：文件名中不应包含空格 / 特殊字符
 ```
 
 ### G.3 Zotero 配置建议

@@ -75,18 +75,17 @@ Oster (2019) 系数稳定性检验
   • δ = 1 时的 β 识别区间：[β_lower, β_upper]
   • 若区间不包含 0 → 结果对遗漏变量偏误稳健
   • 若区间包含 0 → 结果对遗漏变量偏误敏感
-
-Stata 实现（两步法；$controls 需在 do-file 头部定义，见 Phase 4 模板）：
-  * 第一步：估计含控制变量的完整模型（固定效应/聚类与基准一致）
-  reghdfe Y X $controls, absorb(i.id i.year) vce(cluster id)
-  * 第二步：调用 psacalc 读取上一回归结果（控制变量已在模型中，
-  *         勿再以位置参数传入；无 treat() 选项）
-  * 官方 psacalc 基于 reg 类 e()、不支持 reghdfe；若上一步由 reghdfe 估计，
-  * 请安装社区兼容版 psacalc2（GitHub: ArthurHowardMorris/psacalc_supports_reghdfe）
-  * Rmax 上限为 1，常见取 Rmax = min(1.3 × 全模型 R², 1)
-  ssc install psacalc
-  psacalc beta X, delta(1) rmax(1)
 ```
+
+**实现代码**（按后端取）：
+
+| 后端 | 位置 | 说明 |
+|---|---|---|
+| B · Python（默认） | **附录 H.3.3** | `scripts/03_endogeneity_oster.py`；无现成包，按公式自实现 |
+| A · Stata（可选） | **附录 I.4.3** | `psacalc2 beta X, delta(1) rmax(1)`；reghdfe 后必须用 psacalc2 |
+
+> 两版公式等价：β* = β̃ − δ(β° − β̃)(R_max − R̃)/(R̃ − R°)，其中 β°/R° 来自不含控制变量的短回归。
+> R_max 取 min(1.3 × 全模型 R², 1)。点估计可能因 R² 口径（是否含组内 R²）有极小差异，需在正文注明所用实现。
 
 ### Step 5.4：多期 DID 的处理（若适用）
 
@@ -109,30 +108,42 @@ Stata 实现（两步法；$controls 需在 do-file 头部定义，见 Phase 4 �
 3. 理解：异质性处理效应的来源
    → 早处理 vs 晚处理：效应是否不同？
    → 短期 vs 长期：效应是否随时间衰减？
-
-Stata 实现（ssc install csdid；gvar 编码：未处理单元 first_treat=0）：
-  csdid Y X $controls, ivar(id) time(year) gvar(first_treat)   // 默认对照=not-yet-treated
-  estat event                // 动态处理效应汇总（含置信带），必做
-  csdid_plot                 // 事件研究图（需要时）
-  * 若希望以 never-treated 为对照：csdid ... , notyet
 ```
 
-### Step 5.5：数据缺口检查
+**实现代码与能力边界**
+
+| 估计量 | B · Python（附录 H.3.4） | A · Stata（附录 I.4.4） |
+|---|---|---|
+| TWFE 事件研究（`i(rel_time, ref=-1)`） | ✅ 稳定，可出逐期系数与联合检验 | ✅ `eventstudyinteract` 对照 |
+| Sun & Abraham (2021) | ⚠️ `SaturatedEventStudy` 可估计，`aggregate()` 在 pyfixest 0.60 报错 | ✅ `eventstudyinteract` |
+| Callaway & Sant'Anna (2021) | ❌ 无官方实现；`did2s` / `lpdid` 在非平衡面板上报错或崩溃 | ✅ `csdid` + `estat event` |
+| Goodman-Bacon (2021) 分解 | ❌ 无实现 | ✅ `bacondecomp` |
+| Borusyak et al. (2024) 插补 | ⚠️ 无稳定包 | ⚠️ 需第三方 |
+
+> 🛟 若当前是后端 B 而用户要求 CS 估计量或 Bacon 分解：**不得静默替换为 TWFE 并在正文含糊表述**。
+> 明确告知该估计量在当前后端不可得，给两个选项——① 这一张表切后端 A 跑；② 保留 TWFE 事件研究，
+> 在正文的方法说明与研究不足中如实披露（附录 D.5 第 5 条）。无论选哪个，尝试过程与失败原因
+> 均须写入 `log/spec-search.csv`。
+
+### Step 5.5：所需变量的就绪确认
+
+> 这里确认的是"这个方法能不能在当前数据上跑"，**不是数据质量审查**。
+> 已有变量直接用；缺的优先由 AI 从现有列构造，只有确实无法构造时才请用户补一列。
 
 ```
-数据缺口检查
+所需变量确认
 ─────────────────────────────────
 
 推荐方法：{IV / PSM / Heckman / GMM / DID / RDD / SCM / Staggered DID}
 
-所需额外数据/变量：
-  □ {变量1} — 当前状态：{已有/需要构造/需用户提供}
-  □ {变量2} — 当前状态：{已有/需要构造/需用户提供}
+所需额外变量：
+  □ {变量1} — {已存在 / AI 可从现有列构造 / 需用户补}
+  □ {变量2} — {同上}
 
-若需用户提供新数据：
-  • 数据描述：{具体需要什么样的数据}
+若需用户补数据（只列必要的，不应整表重做）：
+  • 需要哪一列：{变量名与口径}
   • 推荐来源：{建议去哪里获取}
-  • 格式要求：{dta / xlsx / csv}
+  • 格式要求：{dta / xlsx / csv 均可}
 ─────────────────────────────────
 ```
 
@@ -158,29 +169,30 @@ Stata 实现（ssc install csdid；gvar 编码：未处理单元 first_treat=0�
 
 用户确认后，AI 生成构造代码或指导用户准备数据。
 
-### Step 5.7：写 do file
+### Step 5.7：写分析脚本并运行
 
-```stata
-* do/endogeneity.do
-* 内生性处理
-* 本 do file 产出的模型框架将在 Phase 6-8 中被继承
-* 注：使用 $controls 前须在文件头定义（见 Phase 4 模板/附录 F），或直接用具体变量列表替换
+> **代码不在本文件**，按后端取：
+>
+> | 方法 | B · Python | A · Stata |
+> |---|---|---|
+> | IV-2SLS | 附录 H.3.1 | 附录 I.4.1 |
+> | PSM | 附录 H.3.2 | 附录 I.4.2 |
+> | Oster 检验 | 附录 H.3.3 | 附录 I.4.3 |
+> | 交叠 DID | 附录 H.3.4 | 附录 I.4.4 |
+> | 框架锁定 | 附录 H.3.5 | 写入 `.thesis_state.json` |
 
-* ── 第一阶段（IV）或 倾向得分估计（PSM）──
-* ...
+**产出要求（后端无关）**
 
-* ── 第二阶段或匹配后估计 ──
-* ...
-
-* ── Oster (2019) 系数稳定性检验 ──
-* (先估计含控制变量与固定效应的完整模型，再执行)
-* reghdfe Y X $controls, absorb(i.id i.year) vce(cluster id)
-* psacalc beta X, delta(1) rmax(1)   // Rmax≤1，见 Step 5.3 说明
-
-* ── 与基准回归对比 ──
-* 将基准回归结果保存在 output/tables/baseline.rtf
-* 将内生性处理结果保存在 output/tables/endogeneity.rtf
 ```
+output/tables/endogeneity.csv（或 .rtf）
+  ├── 第一阶段：X 对 IV 的系数与 F 统计量
+  ├── 第二阶段：β_IV 与 β_OLS 并排
+  ├── 诊断：弱工具 / 过度识别 / DWH / Oster 识别区间
+  └── 若为交叠 DID：TWFE 与 Sun–Abraham（或 CS）估计量并排 + 事件研究图
+output/figures/event_study.png（多期 DID 时必须有）
+```
+
+> 本阶段确立的模型框架将被 Phase 6-8 原样继承（同数据集、同固定效应、同聚类层）。
 
 ### Step 5.8：结果解读
 

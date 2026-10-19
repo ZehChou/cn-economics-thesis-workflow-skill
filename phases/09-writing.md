@@ -5,26 +5,26 @@
 进入 Phase 9 时，AI 首先询问排版路线：
 
 ```
-论文文档生成路线选择
+论文文档生成路线选择（与计量后端 A/B 无关，这里讲的是排版工具）
 ═══════════════════════════════════════
 
-请选择文档生成方式：
+请选择文档生成方式（直接回车 = P）：
 
-A. Python 路线（python-docx）
+P. Python 路线（python-docx）
    依赖：Python 3.9+，pip install python-docx
-   特点：纯 Python 生态，与数据分析流水线同语言，易于维护
-   公式支持：python-docx 无原生公式 API，需以 OMML 注入（实现见附录 B）；复杂公式建议走 B 路线
+   特点：纯 Python 生态，与数据分析、表格输出同语言，易于维护
+   公式支持：python-docx 无原生公式 API，需以 OMML 注入（实现见附录 B）；复杂公式建议走路线 N
 
-B. Node.js 路线（docx-skill-4-cn-paper）
+N. Node.js 路线（docx-skill-4-cn-paper）
    依赖：Node.js 18+，npm install docx temml fast-xml-parser
    特点：原生公式支持（temml → MathML → Word 原生公式），
          直接使用 docx-skill-4-cn-paper 辅助函数体系
    公式管道：LaTeX → temml → MathML → OMML（Word 原生）
 
-建议：如果你熟悉 Node.js 或需要高质量公式渲染，选 B。
-      如果希望保持全流程 Python 统一，选 A。
+建议：如果你熟悉 Node.js 或需要高质量公式渲染，选 N。
+      如果希望保持全流程 Python 统一（推荐，且无需额外环境），选 P。
 
-你的选择：[A / B]
+你的选择：[P / N]
 ```
 
 ### Step 9.1：素材读取
@@ -259,24 +259,30 @@ AI 检查论文中需要图表的位置，询问用户：
 ═══════════════════════════════════════
 
 第 4 章（研究设计）：
-  □ 表 1：描述性统计表 ✓（已存在 output/tables/desc.rtf）
-  □ 表 2：相关性矩阵 ✓（已存在）
-  □ 图 1：核心变量分布图 ✓（已存在 output/figures/dist.png）
+  □ 表 1：描述性统计表 ✓（output/tables/desc.csv 或 .rtf）
+  □ 表 2：相关性矩阵 ✓
+  □ 图 1：核心变量分布图 ✓（output/figures/dist.png）
 
 第 5 章（实证结果）：
-  □ 表 3：基准回归结果 ✓（已存在 output/tables/baseline.rtf）
-  □ 表 4：内生性处理结果 ✓（已存在 output/tables/endogeneity.rtf）
-  □ 表 5：稳健性检验结果 ✓（已存在）
-  □ 表 6：机制检验结果 ✓（已存在）
-  □ 表 7：异质性分析结果（分维度）✓（已存在）
+  □ 表 3：基准回归结果 ✓（output/tables/baseline.*）
+  □ 表 4：内生性处理结果 ✓（output/tables/endogeneity*）
+  □ 表 5：稳健性检验结果 ✓（output/tables/robustness.*）
+  □ 表 6：机制检验结果 ✓（output/tables/mechanism.*）
+  □ 表 7：异质性分析结果（分维度）✓（output/tables/heterogeneity.*）
   □ 图 2：机制路径图（需新建）
+  □ 图 3：事件研究图（多期 DID 时必有，output/figures/event_study.png）
 
 请确认以上图表是否需要全部插入？
 如需调整或新增，请说明。
 ═══════════════════════════════════════
 ```
 
-用户确认后，AI 通过 python-docx（A 路线）或 docx npm（B 路线）将图表插入对应章节位置。
+用户确认后，AI 通过 python-docx（路线 P）或 docx npm（路线 N）将图表插入对应章节位置。
+
+> **回归表直接用代码生成，不应手抄数字。**
+> - 后端 B：`output/tables/*.csv` → 附录 **H.7** 的 `three_line_table()` 直写 docx 三线表；
+> - 后端 A：`esttab ... using output/tables/*.rtf` → 插入 Word 后统一改为三线表。
+> 表格里的每个数字都必须能在脚本输出里找到出处（附录 D.5 第 3 条）。
 
 图表排版格式（三线表标准，字号以附录 A.2 为唯一真源）：
 - 表题在上：黑体五号（10.5pt），居中
@@ -308,7 +314,7 @@ AI 执行最终排版流程：
 
 论文最终输出为 `thesis/论文题目_终稿.docx`。
 
-### A 路线（Python python-docx）示例
+### 路线 P（Python python-docx）示例
 
 ```python
 from docx import Document
@@ -353,7 +359,7 @@ doc.add_picture("output/figures/dist.png", width=Cm(12))
 doc.save("thesis/论文题目_终稿.docx")
 ```
 
-### B 路线（Node.js docx-skill-4-cn-paper）示例
+### 路线 N（Node.js docx-skill-4-cn-paper）示例
 
 ```javascript
 // docx-skill-4-cn-paper 的辅助函数需先按其仓库指引安装/拷贝到项目（scripts/new_doc.js 不在本 skill 仓库内）

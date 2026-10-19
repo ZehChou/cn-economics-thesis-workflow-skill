@@ -20,8 +20,9 @@
 
 □ 是否报告了组间差异检验？
    - 分组回归只能看"组内系数"，不能直接检验组间差异
-   - 必须通过交互项（X × group）检验组间差异；⚠️ 本工作流基于 reghdfe，
-     suest 与 reghdfe 不兼容，勿在分组 reghdfe 后使用 suest（详见 Step 8.3）
+   - 必须通过交互项（X × group）检验组间差异
+   - ⚠️ 高维固定效应下不应用 suest（只接受 regress 类估计结果，与 absorb/reghdfe 不兼容）；
+     后端 B 也没有 suest 的对应物，且不需要——全交互 + 交互项检验就是正式做法
 
 □ 组间样本量与精度是否可比？
    - 某组样本量过小会降低组内估计精度与统计功效
@@ -76,34 +77,30 @@ AI 基于文献和逻辑推荐 2-3 个预先指定的分组维度：
 
 🔴 CHECKPOINT：用户确认 2-3 个维度（须为预先指定）后，方可进入 Step 8.3。
 
-### Step 8.3：写 do file
+### Step 8.3：写分析脚本并运行
 
-```stata
-* do/heterogeneity.do
-* 异质性分析
-* 基于 Phase 5 模型框架
+> **代码不在本文件**，按后端取：
+>
+> | 后端 | 位置 | 要点 |
+> |---|---|---|
+> | B · Python（默认） | **附录 H.6** | `pf.feols(Y ~ X*i.group + controls \| fe)` + `multipletests(fdr_bh)` |
+> | A · Stata（可选） | **附录 I.7** | `reghdfe Y c.X##i.group` + `test 1.group#c.X` |
 
-use "cleaned/dataset.dta", clear
+**唯一推荐的组间差异检验方式**
 
-* 若分组变量为字符串，先编码为数值因子：
-* encode {Group variable}, gen(group)   // 0/1/2... 类别
+```
+全交互扩展模型：Y = α + β1·X + β2·group + β3·(X×group) + γ·Controls + FE + ε
+判据：看 β3（交互项）的符号与显著性，而不是"两组分别显著/不显著"
+```
 
-* ── 方法一（推荐）：全交互扩展模型，直接检验组间差异 ──
-reghdfe Y c.X##i.group $controls, absorb(i.id i.year) vce(cluster id)
-test 1.group#c.X          // 检验 X 的效应在基准组 vs 其他组是否不同
-eststo inter
+**产出要求（后端无关）**
 
-* 注：连续 X 与因子分组交互用 c.X##i.group；若分组为连续变量，用 c.X##c.Z
-* 并按 Z 的均值±1SD 报告边际效应（margins/marginsplot）
-
-* ── 方法二（不建议用于本文 reghdfe 框架）：分组回归 + suest ──
-* suest 只适用于普通 regress（无 absorb、无 reghdfe）估计结果；
-* 高维固定效应下的组间差异一律用方法一。若确需分组估计作对照：
-*   preserve
-*   keep if group == 1
-*   reg Y X $controls i.id i.year, vce(cluster id)   // 或 reghdfe，仅展示组内系数
-*   eststo groupA
-*   restore
+```
+output/tables/heterogeneity.csv（或 .rtf）
+  ├── 每个维度：X 的组内效应 + 交互项系数 + p 值
+  ├── 各组 N 与聚类数量（判断精度是否可比，不设固定阈值）
+  ├── 维度 > 3 时：FDR/Bonferroni 校正后 p 值
+  └── 组间差异的正式检验统计量（不能只放两个分组回归表）
 ```
 
 ### Step 8.4：结果解读
