@@ -16,3 +16,20 @@ __pycache__/
 
 # User-specific state files
 .thesis_state.json
+
+# Reference sample theses (copyrighted PDFs, not for redistribution)
+范文（gitignore）/
+范文(gitignore)/
+
+# Agent workspace memory (local state, not project content)
+.workbuddy/
+
+# Smoke test artifacts (regenerate with tests/smoke/scripts/run_all.py)
+tests/smoke/cleaned/
+tests/smoke/output/
+tests/smoke/log/
+tests/smoke/thesis/
+tests/smoke/data/raw/*.csv
+tests/smoke/.thesis_state.json
+# 文献快照由 lit_fetch.py 从 OpenAlex 重建；不入库以避免摘录版权与仓库膨胀
+tests/smoke/references/
