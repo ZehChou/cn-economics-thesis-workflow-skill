@@ -2,21 +2,23 @@
 
 ### Step 2.1：核心文献获取
 
-AI 推荐搜索关键词和文献获取渠道：
+> 操作细节（API、Zotero、去重、入库）统一见**附录 J**。本节只定目标量与分级。
 
 ```
-推荐搜索关键词（共 3-5 组，中英文各一组）：
+建议检索关键词（3-5 组，中英文各一组）：
   Group 1（英文）: {keyword set 1}
   Group 2（中文）: {keyword set 2}
   ...
 
-推荐文献获取渠道：
-  • 英文：Google Scholar → Semantic Scholar → NBER / SSRN / arXiv
-  • 中文：CNKI（知网）CSSCI 来源期刊 → 万方数据 → 维普
-  • 参考文献追溯：从已有关键文献的参考文献列表中反向查找高引文献
+获取渠道（按层级）：
+  L0 英文：OpenAlex（含摘要与引用网络）→ Crossref（DOI 补全）→ Semantic Scholar（引文关系）
+  L1 中文：Zotero + translators_CN 一键抓取知网/万方/维普（走用户机构 IP）
+  L2 人工检索：AI 给检索式，用户检索后回贴题录 / 放 PDF 到 references/
+  全文：OpenAlex OA 链接 / NBER / SSRN / arXiv / 作者主页 / 学校订阅
+  追溯：从关键文献的参考文献反向查找高引文献
 ```
 
-下载建议：每篇 PDF 文件名格式为 `{AuthorYear}_{ShortTitle}.pdf`，例如 `Autor2013_TradeJobs.pdf`。
+下载命名：`{AuthorYear}_{ShortTitle}.pdf`，例如 `Autor2013_TradeJobs.pdf`。
 
 #### 文献目标量（按学位层次区分）
 

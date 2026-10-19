@@ -93,38 +93,27 @@ AI 回顾 Phase 2 推导的研究假设：
    • 需排除其他渠道存在的可能性
 ```
 
-### Step 7.5：写 do file
+### Step 7.5：写分析脚本并运行
 
-```stata
-* do/mechanism.do
-* 机制检验
-* 基于 Phase 5 模型框架
+> **代码不在本文件**，按后端取：
+>
+> | 方法 | B · Python（附录 H.5） | A · Stata（附录 I.6） |
+> |---|---|---|
+> | 江艇 (2022) 两步法 | `pf.feols(M ~ X + controls \| fe)` | `reghdfe M X $controls` |
+> | Sobel / Bootstrap | 手写 Sobel z + 1000 次 Bootstrap 间接效应 CI | `sgmediation` + `bootstrap` |
+> | 调节效应 | `pf.feols(Y ~ X*Z + controls \| fe)` | `reghdfe Y c.X##c.Z` |
 
-use "cleaned/dataset.dta", clear
-global controls "..."   // 与 Phase 4 模板一致：从 .thesis_state.json 回填；未定义会静默展开为空
+**产出要求（后端无关）**
 
-* ── 主效应（Phase 5 验证通过）──
-* ...
-
-* ── 方法一：江艇两步法 ──
-* 第一步：X → M
-* reg M X $controls i.id i.year, vce(cluster id)
-
-* 第二步：引用文献论证 M → Y
-* （无需在本文回归中包含 M）
-
-* ── 方法二：Baron & Kenny 三步法（可选）──
-* Step 1: reg Y X $controls i.id i.year, vce(cluster id)
-* Step 2: reg M X $controls i.id i.year, vce(cluster id)
-* Step 3: reg Y X M $controls i.id i.year, vce(cluster id)
-* sgmediation Y, mv(M) iv(X) cv($controls)
-
-* ── 调节效应 ──
-* reg Y c.X##c.Z $controls i.id i.year, vce(cluster id)
-
-* ── 输出表格 ──
-* esttab ... using "output/tables/mechanism.rtf", replace
 ```
+output/tables/mechanism.csv（或 .rtf）
+  ├── X → M 的系数、标准误、p 值（每个机制变量一列）
+  ├── 间接效应与 95% CI（Bootstrap 时报告区间而非只看 Sobel z）
+  └── 调节项 X×Z 的系数与显著性
+```
+
+> ⚠️ 主推江艇两步法：**只对 X → M 做因果检验**，M → Y 靠文献与理论论证。
+> 不应把 X 和 M 同时放进 Y 的方程再声称"中介效应成立"（坏控制问题，见 Step 7.2 说明）。
 
 ### Step 7.6：结果解读
 

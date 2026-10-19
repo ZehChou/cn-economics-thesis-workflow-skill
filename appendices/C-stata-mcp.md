@@ -1,4 +1,10 @@
-## 附录 C：Stata MCP 配置与使用指南
+## 附录 C：后端 A（可选）— Stata MCP 配置与使用指南
+
+> ⚠️ **本附录只在 `analysis_backend = "stata"` 时使用。** 默认后端是 Python（附录 H），**不需要 MCP**。
+> Stata 后端的可运行代码模板见附录 I；两者分工：本附录管"怎么连上 Stata"，附录 I 管"跑什么代码"。
+>
+> 选 Stata 的典型理由：导师/学院要求提交 do-file 与复现包；需要 Goodman-Bacon 分解、`rdrobust`、
+> `csdid` 等 Python 生态缺失的估计量；用户已熟悉 Stata 并希望自己改代码。
 
 ### C.1 安装
 
