@@ -1,162 +1,183 @@
 # cn-economics-thesis-workflow-skill
 
-**交互式中文经济学实证论文自动化工作流** — 一个 OpenCode / Claude Code / Codex / Cursor 等 AI 客户端的 Skill 包，引导 AI Agent 按 9 阶段交互式流程完成从选题到排版成文的全过程。
+面向中文经济学实证研究的学位论文工作流 Skill 包，适用于 OpenCode、Claude Code、Codex、Cursor 等支持 Skill 或规则文件的 AI 客户端。包内以九个阶段组织从选题到成文的完整流程，每个阶段包含交互节点、方法清单、验收标准与可复现的分析脚本模板。
 
-> **设计契约**：用户只提供 **数据 + 对选择题的回答**；Agent 负责检索、清洗、跑计量、解读、撰写、排版；交付物是**对齐范文结构与版式的 `.docx` 学位论文**。
-> 用户不需要写代码、不需要装 Stata、不需要自己检查数据。
+## 功能范围
 
-## 工作流总览
+本工作流处理以下环节：
+
+| 环节 | 内容 | 产物 |
+|---|---|---|
+| 选题 | 主题定位、文献扫描、可行性评估 | 选题评估报告 |
+| 文献 | 英文元数据检索、中文题录抓取、分级精读、引用拓扑 | `citation_db`、文献综述初稿 |
+| 数据 | 变量推荐、构造脚本、描述性统计 | `cleaned/dataset.dta`、描述统计表与图 |
+| 计量 | 基准回归、内生性、稳健性、机制、异质性 | 回归表（`.csv` / `.rtf`）、事件研究图 |
+| 成文 | 大纲、正文、三线表、引文替换、版式 | `.docx` 学位论文 |
+
+计量结果的数值来源限定为脚本输出，正文数字与 `output/tables/` 下的文件保持一致。
+
+## 工作流结构
 
 ```
-Phase 0 ──→ Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4
-环境准备      选题与         文献综述       数据与         基准回归
-             文献定位        与理论框架     变量
-                                               │
-                         Phase 5 ◄─────────────┘
-                         内生性处理
-                           │
-                    ┌──────┼──────┐
-                    ▼      ▼      ▼
-               Phase 6  Phase 7  Phase 8
-               稳健性   机制检验  异质性
-               检验               分析
-                    │      │      │
-                    └──────┼──────┘
-                           ▼
-                       Phase 9
-                   论文撰写与排版成文
+Phase 0  环境准备与后端选择
+   │
+Phase 1  选题与文献定位
+   │
+Phase 2  文献综述与理论框架
+   │
+Phase 3  数据与变量
+   │
+Phase 4  基准回归
+   │
+Phase 5  内生性处理 ──→ 锁定模型框架
+   │
+   ├── Phase 6  稳健性检验
+   ├── Phase 7  机制检验
+   └── Phase 8  异质性分析
+   │
+Phase 9  论文撰写与排版成文
 ```
 
-## 核心特性
+Phase 4 至 Phase 8 共用一套交互循环：方法推荐、节点确认、变量就绪检查、脚本编写与运行、结果解读、结果确认。每个阶段文件只描述任务与验收标准，可运行代码集中在附录 H（Python）与附录 I（Stata）。
 
-- **分步骤交互式**：每个阶段先问再回答再生成，用户全程主导
-- **三档用户自适应**：L1 新手（含 mini 教学）/ L2 有基础 / L3 进阶
-- **双计量后端，用户自选**：**Python（默认，零配置）** 或 **Stata（可选，需 MCP）**；两者都覆盖 Phase 4-8 全部方法，代码分别集中在附录 H / I
-- **数据即用**：用户给什么用什么，不主动做数据质量审查（除非用户要求）
-- **技术栈**：Python（数据清洗 + 计量 + 可视化 + docx 排版）；Stata 仅在显式选择后端 A 时使用
-- **三线表 + GB/T 7714 参考文献**：格式规范参照 easy-paper Typst 模板，回归结果直写 docx 三线表
-- **范文驱动排版**：提取范文的章节骨架与版式参数作为验收标准；无范文时回退附录 A 默认版式
-- **模块化结构**：各 Phase 拆分为独立文件，Phase 只留"做什么/验收什么"，代码集中在附录
-- **状态持久化**：通过 `.thesis_state.json` 实现跨会话断点续传（含 `analysis_backend`）
-- **文献获取三层**：OpenAlex / Crossref / Semantic Scholar（L0 官方 API）+ Zotero 中文抓取（L1，知网/万方/维普）+ 人工检索（L2）；不内置爬虫与 Sci-Hub
-- **前沿计量方法**：交叠 DID、Oster 系数稳定性检验、合成控制法、因果中介分析等
-- **审稿人/答辩问答库**：附录集成 12 个常见审稿问题的标准应对策略
-- **研究诚信纪律**：附录 D.5 红灯清单禁止 p-hacking / 编造结果 / 无记录换规格 / 静默删样本；回归尝试写入 `log/spec-search.csv` 并全量披露
-- **可复现分析脚本**：Python 走 `run_all.py`、Stata 走 `master.do`，均含版本锁定与随机种子记录
-- **引用体系自洽**：默认 GB/T 7714 顺序编码制（著者-出版年制可选），`[CIT:]` 占位符按所选体制统一替换，两制不混用
+## 计量后端
 
-## 内容亮点
+工作流提供两套等价的计量执行后端，在 Phase 0 选择，默认 Python。选择结果写入 `.thesis_state.json` 的 `analysis_backend` 字段，供后续阶段读取。
 
-### 文献检索（Phase 1-2）
-- 三层获取：L0 官方 API（OpenAlex 含摘要与引用网络 / Crossref 补 DOI / Semantic Scholar 补引文）→ L1 Zotero 一键抓知网（机构 IP）→ L2 人工检索
-- 文献量按学位层次区分：硕士 40-60 篇 / 博士 80-100 篇；扫描版 PDF 单独标记，不假装精读
+| 维度 | 后端 B：Python（默认） | 后端 A：Stata（可选） |
+|---|---|---|
+| 代码位置 | 附录 H | 附录 I |
+| 主要依赖 | pyfixest、linearmodels、statsmodels | Stata 16 及以上、mcp-for-stata |
+| 回归表输出 | DataFrame 直写 docx 三线表 | esttab 输出 rtf |
+| 独有能力 | 无 | Goodman-Bacon 分解、rdrobust、csdid |
+| 归档方式 | `scripts/*.py`、`run_all.py` | `do/*.do`、`master.do` |
 
-### 分析方法（Phase 4-8）
-- **双后端等价**：Python（pyfixest / linearmodels）与 Stata（reghdfe / ivreg2 / csdid）产出同一张表结构
-- **经济显著性评估**：标准化系数、效应量对比、与文献对标
-- **内生性前沿**：交叠 DID、Oster (2019) 检验（Python 侧自实现）、SCM
-- **能力边界透明**：Goodman-Bacon 分解、rdrobust 仅后端 A 支持；附录 H.9 有完整对照表
-- **机制检验**：主推江艇 (2022) 两步法 + 因果中介分析（Imai et al. 2010）
-- **异质性规范**：预先指定分组、多重假设检验校正、全交互 + 交互项检验（不使用不兼容的 suest）
+两套后端的方法覆盖范围与能力差异见附录 H.9。对于 Python 生态缺失的估计量，附录 H.3.4 规定了处理方式：不得以简化估计量静默替代，须向使用者说明并按需切换后端。
 
-### 写作指导（Phase 9）
-- **叙事结构**：每章明确叙事目标（引言→为什么重要，设计→识别策略可信度）
-- **写作顺序**：建议"结果先行，引言收尾"，避免反复修改
+## 文献获取
 
-### 附录体系
-- 审稿人/答辩常见问题应对策略（12 个高频问题）
-- 分析脚本归档规范（Stata `do/` + Python `scripts/` 双套）
-- 通用规则：研究诚信红灯清单（D.5，9 条）、12 类失败模式 fallback、状态字段说明
-- 文献获取操作手册（J）：API 代码、Zotero 配置、PDF 提取、合规边界
-- 参考文献管理建议（Zotero + Jasminum + GB/T 7714）
+文献获取分三层，按可得性依次降级：
+
+| 层级 | 手段 | 覆盖 | 备注 |
+|---|---|---|---|
+| L0 | OpenAlex、Crossref、Semantic Scholar 官方接口 | 英文题录、摘要、引用网络 | OpenAlex 自 2026 年 2 月起要求免费 API Key |
+| L1 | Zotero 配合 translators_CN 抓取器 | 知网、万方、维普的题录与 PDF | 需机构网络权限 |
+| L2 | 生成检索式，由使用者在浏览器中检索 | 全部 | 前两层不可用时采用 |
+
+工作流不包含 Sci-Hub 类全文下载工具，也不包含绕过访问控制的站点爬虫。相关边界见附录 J.6。
+
+## 关键约定
+
+- **研究诚信**：附录 D.5 列明九类禁止行为，包括为达到显著性更换规格、选择性报告稳健性结果、编造数据或文献条目、静默删除观测。所有运行过的规格写入 `log/spec-search.csv`，定稿时全量披露。
+- **状态持久化**：阶段进度、变量清单、模型框架、引用库写入 `.thesis_state.json`，支持跨会话续作。
+- **版式基准**：提供参考范文时，以其章节结构与版式参数为准；未提供时使用附录 A 的默认版式。
+- **引用体系**：默认采用 GB/T 7714—2015 顺序编码制，著者-出版年制为备选，全文只采用一种。正文以 `[CIT:key]` 占位，由脚本统一替换编号并生成条目。
+- **数据交接**：仅读取数据结构以确定变量名与类型，不执行数据质量审查；诊断仅在脚本报错或使用者要求时进行。
+
+## 目录结构
+
+```
+cn-economics-thesis-workflow-skill/
+├── SKILL.md                         # 入口文件：概述与路由
+├── phases/                          # 九个阶段的步骤说明
+│   ├── 00-environment.md
+│   ├── 01-topic.md
+│   ├── 02-literature.md
+│   ├── 03-data.md
+│   ├── 04-baseline.md
+│   ├── 05-endogeneity.md
+│   ├── 06-robustness.md
+│   ├── 07-mechanism.md
+│   ├── 08-heterogeneity.md
+│   └── 09-writing.md
+├── appendices/                      # 附录，共 10 个
+│   ├── A-easypaper-format.md        # 版式规范
+│   ├── B-docx-helper.md             # docx 辅助函数接口
+│   ├── C-stata-mcp.md               # 后端 A 的 MCP 配置
+│   ├── D-general-rules.md           # 状态字段、错误处理、研究诚信
+│   ├── E-reviewer-qa.md             # 审稿与答辩问答
+│   ├── F-analysis-archive.md        # 分析脚本归档规范
+│   ├── G-reference-management.md    # 文献管理建议
+│   ├── H-analysis-backend-python.md # 后端 B 代码
+│   ├── I-analysis-backend-stata.md  # 后端 A 代码
+│   └── J-literature-acquisition.md  # 文献获取操作手册
+├── tests/smoke/                     # 端到端冒烟测试
+├── README.md
+├── opencode.jsonc                   # OpenCode 配置示例
+└── .gitignore
+```
 
 ## 安装
 
-### 克隆到 skills 目录
+将仓库克隆至客户端的 skills 目录。
 
-**OpenCode 用户：**
+OpenCode：
 
 ```bash
 git clone https://github.com/ZehChou/cn-economics-thesis-workflow-skill.git \
   ~/.config/opencode/skills/cn-economics-thesis-workflow-skill
 ```
 
-**Claude Code 用户：**
+Claude Code：
 
 ```bash
 git clone https://github.com/ZehChou/cn-economics-thesis-workflow-skill.git \
   ~/.claude/skills/cn-economics-thesis-workflow-skill
 ```
 
-**Cline / Cursor / Windsurf 等其他客户端：**
+Cline、Cursor、Windsurf 等客户端：将 `SKILL.md` 放置于项目的规则文件路径，或按客户端文档配置引用。
 
-将 `SKILL.md` 内容复制或引用到你的项目根目录，或按客户端指南配置规则文件路径。
+## 使用
 
-### 使用方式
-
-在对话中，Agent 会根据 `SKILL.md` 中的指令自动进入交互流程，从 Phase 0 开始引导你完成全部环节。各 Phase 的详细步骤存储在 `phases/` 目录中，附录信息存储在 `appendices/` 目录中。
-
-## 项目结构
-
-```
-cn-economics-thesis-workflow-skill/
-├── SKILL.md                        # 主入口：概述 + 路由（Agent 加载此文件）
-├── phases/                         # 各阶段详细步骤
-│   ├── 00-environment.md           # Phase 0：环境准备
-│   ├── 01-topic.md                 # Phase 1：选题与文献定位
-│   ├── 02-literature.md            # Phase 2：文献综述与理论框架
-│   ├── 03-data.md                  # Phase 3：数据与变量
-│   ├── 04-baseline.md              # Phase 4：基准回归
-│   ├── 05-endogeneity.md           # Phase 5：内生性处理
-│   ├── 06-robustness.md            # Phase 6：稳健性检验
-│   ├── 07-mechanism.md             # Phase 7：机制检验
-│   ├── 08-heterogeneity.md         # Phase 8：异质性分析
-│   └── 09-writing.md               # Phase 9：论文撰写与排版成文
-├── appendices/                     # 附录（10 个）
-│   ├── A-easypaper-format.md       # 版式规范（无范文时的默认基准）
-│   ├── B-docx-helper.md            # docx 辅助函数接口定义
-│   ├── C-stata-mcp.md              # 后端 A：Stata MCP 配置（可选）
-│   ├── D-general-rules.md          # 通用规则、状态字段、错误处理
-│   ├── E-reviewer-qa.md            # 审稿人/答辩常见问题应对策略
-│   ├── F-analysis-archive.md       # 分析脚本归档规范（Stata + Python）
-│   ├── G-reference-management.md   # 参考文献管理建议
-│   ├── H-analysis-backend-python.md# 后端 B（默认）代码真源
-│   ├── I-analysis-backend-stata.md # 后端 A（可选）代码真源
-│   └── J-literature-acquisition.md # 文献获取操作手册
-├── README.md                       # 本文件
-├── opencode.jsonc                  # OpenCode 示例配置
-└── .gitignore
-```
+客户端加载 `SKILL.md` 后，按其中的路由读取 `phases/` 与 `appendices/` 下的对应文件。Phase 0 依次确认数据路径、参考范文与计量后端，并初始化项目目录与状态文件，随后进入 Phase 1。
 
 ## 前置依赖
 
-**后端 B · Python（默认，无需其他软件）**
+后端 B（Python，默认）：
 
-| 工具 | 版本要求 | 用途 |
-|------|----------|------|
+| 依赖 | 版本 | 用途 |
+|---|---|---|
 | Python | ≥ 3.9 | 数据清洗、计量、图表、docx 排版 |
-| pip 包 | — | `pandas` `numpy` `scipy` `statsmodels` `pyfixest` `linearmodels` `scikit-learn` `openpyxl` `python-docx` `pypdf` `pdfplumber` |
-| Node.js | ≥ 18 | 仅 Phase 9 走路线 N（docx-skill-4-cn-paper）时需要 |
-| OpenAlex API Key | 免费 | 文献元数据检索（2026-02 起必需，见附录 J.2） |
+| pip 包 | — | pandas、numpy、scipy、statsmodels、pyfixest、linearmodels、scikit-learn、openpyxl、python-docx、pypdf、pdfplumber |
+| Node.js | ≥ 18 | 仅在 Phase 9 采用路线 N（docx-skill-4-cn-paper）时需要 |
+| OpenAlex API Key | 免费 | 文献元数据检索，2026 年 2 月起必需，申请方式见附录 J.2 |
 
-**后端 A · Stata（可选，仅当用户显式选择时）**
+后端 A（Stata，可选）：
 
-| 工具 | 版本要求 | 用途 |
-|------|----------|------|
-| Stata | ≥ 16 | 核心计量回归 |
+| 依赖 | 版本 | 用途 |
+|---|---|---|
+| Stata | ≥ 16 | 计量回归 |
 | uv | ≥ 0.4.0 | 安装 mcp-for-stata |
-| SSC 包 | — | `reghdfe` `ftools` `estout` `ivreg2` `csdid` `bacondecomp` `psacalc2` 等（附录 I.1） |
+| SSC 包 | — | reghdfe、ftools、estout、ivreg2、csdid、bacondecomp、psacalc2 等，清单见附录 I.1 |
+
+## 测试
+
+`tests/smoke/` 提供一次端到端冒烟测试，使用合成面板数据（500 家企业、6191 个观测）覆盖 Phase 3 至 Phase 9，并由子代理模拟节点选择。测试结果与缺陷记录见 `tests/smoke/REPORT.md`。
+
+```bash
+cd tests/smoke
+python scripts/gen_data.py
+python scripts/run_all.py            # 需联网，约 2 至 3 分钟
+python scripts/run_all.py --offline  # 复用已有文献快照
+```
+
+## 已知限制
+
+- 中文文献全文的获取依赖机构订阅，工作流只提供检索式与抓取工具，不代为获取。
+- 后端 B 无法产出 Sun–Abraham 总体处理效应与 Callaway–Sant'Anna 估计量，相关表格需使用后端 A。
+- 冒烟测试的正文篇幅约为学位论文要求的十分之一，用于验证结构与数值贯通，不用于验证写作质量。
+- 参考文献条目由官方接口题录生成，卷期页码与作者拼写仍需以原文核对。
 
 ## 外部参考项目
 
-| 仓库 | 定位 | 使用方式 |
-|------|------|----------|
-| [easy-paper](https://github.com/Dawnfz-Lenfeng/easy-paper) | Typst 中文论文模板 | 提取格式参数作为排版默认配置 |
-| [docx-skill-4-cn-paper](https://github.com/Gostyan/docx-skill-4-cn-paper) | Node.js docx 辅助函数集 | Phase 9 路线 N 直接使用其辅助函数模式 |
-| [pyfixest](https://github.com/py-econometrics/pyfixest) | Python 高维 FE 回归 | 后端 B 主力估计器（附录 H） |
-| [pyalex](https://github.com/J535D165/pyalex) | OpenAlex 客户端 | 文献元数据检索（附录 J.2） |
-| [translators_CN](https://github.com/qnscholar/translators_CN) | Zotero 中文抓取器 | 知网/万方/维普一键入库（附录 J.3） |
-| [mcp-for-stata](https://github.com/SepineTam/mcp-for-stata) | Stata MCP 服务器 | 仅后端 A 使用（附录 C） |
+| 项目 | 定位 | 用途 |
+|---|---|---|
+| [easy-paper](https://github.com/Dawnfz-Lenfeng/easy-paper) | Typst 中文论文模板 | 版式参数的参考来源 |
+| [docx-skill-4-cn-paper](https://github.com/Gostyan/docx-skill-4-cn-paper) | Node.js docx 辅助函数集 | Phase 9 路线 N |
+| [pyfixest](https://github.com/py-econometrics/pyfixest) | Python 高维固定效应回归 | 后端 B 的估计器 |
+| [pyalex](https://github.com/J535D165/pyalex) | OpenAlex 客户端 | 文献元数据检索 |
+| [translators_CN](https://github.com/qnscholar/translators_CN) | Zotero 中文站点抓取器 | 中文题录与 PDF 入库 |
+| [mcp-for-stata](https://github.com/SepineTam/mcp-for-stata) | Stata MCP 服务器 | 后端 A |
 
 ## 许可证
 
