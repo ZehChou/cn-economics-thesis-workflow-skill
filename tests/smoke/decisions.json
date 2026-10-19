@@ -1,0 +1,42 @@
+{
+  "scenario": "低碳城市试点政策与企业绿色创新（合成数据冒烟测试，非真实数据）",
+  "user_level": "L2",
+  "analysis_backend": "python",
+  "docx_route": "P",
+  "phase3_variables": {
+    "Y": "green_pat",
+    "Y_alt": "green_inv",
+    "X": "did",
+    "controls": ["size", "lev", "roa", "growth", "age", "cash"],
+    "mechanism": ["fc", "gi"],
+    "heterogeneity": ["soe", "heavy"]
+  },
+  "phase4_baseline": {
+    "fe": ["id", "year"],
+    "extra_fe": "industry^year",
+    "cluster": "id",
+    "note": "基准采用企业与年份双向固定效应，第(4)列叠加行业×年份固定效应；标准误聚类到企业层面。"
+  },
+  "phase5_endogeneity": {
+    "methods": ["Oster 检验", "Sun-Abraham 交叠 DID"],
+    "primary": "Sun-Abraham",
+    "cohort_var": "first_treat",
+    "time_var": "year"
+  },
+  "phase6_robustness": {
+    "checks": ["缩尾1%", "替换被解释变量", "剔除直辖市", "安慰剂500次"],
+    "placebo_reps": 500
+  },
+  "phase7_mechanism": {
+    "method": "江艇两步法",
+    "variables": ["fc", "gi"]
+  },
+  "phase8_heterogeneity": {
+    "dimensions": ["soe", "heavy"],
+    "fdr": true
+  },
+  "phase9_outline": {
+    "chapters": ["引言", "文献综述", "理论分析与研究假设", "研究设计", "实证结果与分析", "结论与政策建议"],
+    "reference_style": "GB/T 7714 顺序编码制"
+  }
+}
